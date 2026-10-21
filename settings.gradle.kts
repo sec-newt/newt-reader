@@ -27,5 +27,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "NewtTemplate"
+rootProject.name = "NewtReader"
 include(":app")
