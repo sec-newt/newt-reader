@@ -32,6 +32,20 @@ class StitcherTest {
         assertEquals("[8]", p.spans.filterIsInstance<Span.Link>().single().text)
     }
 
+    @Test fun webBlocksWithSpaceBetweenThemStaySeparate() {
+        val blocks = Stitcher.stitch(web(
+            ScreenNode("android.widget.TextView", text = "Test page two", bounds = Bounds(8, 45, 312, 84)),
+            ScreenNode("android.widget.TextView", text = "You followed the link.", bounds = Bounds(8, 104, 312, 124))))
+        assertEquals(listOf("Test page two", "You followed the link."), blocks.map { it.text })
+    }
+
+    @Test fun webRunsOnTouchingLinesStayOneParagraph() {
+        val p = Stitcher.stitch(web(ScreenNode("android.view.View", children = listOf(
+            ScreenNode("android.widget.TextView", text = "A run that wraps ", bounds = Bounds(8, 100, 300, 160)),
+            ScreenNode("android.widget.TextView", text = "and goes on.", bounds = Bounds(8, 130, 200, 160)))))).single()
+        assertEquals("A run that wraps and goes on.", p.text)
+    }
+
     @Test fun appLeavesAreSeparateParagraphs() {
         val blocks = Stitcher.stitch(app(tv("Running"), tv("The probe connected fine.")))
         assertEquals(listOf("Running", "The probe connected fine."), blocks.map { it.text })

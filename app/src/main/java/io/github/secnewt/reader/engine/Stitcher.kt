@@ -56,9 +56,19 @@ object Stitcher {
     }
 
     private fun isParagraph(n: ScreenNode): Boolean =
-        n.children.isNotEmpty() &&
+        n.children.isNotEmpty() && !hasBlockGap(n) &&
             n.children.any { it.isLeaf && it.cls.endsWith("TextView") && !it.label.isNullOrBlank() } &&
             n.children.all { it.isLeaf || (it.clickable && allText(it, true).length < INLINE_LINK_MAX) || allText(it, true).length < SHORT }
+
+    /**
+     * Runs of one paragraph start on the line where the last one ended; separate blocks (an h1
+     * then a p, both bare text under the page) have space between them. Only text runs count:
+     * small inline boxes like footnote markers leave gaps between lines inside a paragraph.
+     */
+    private fun hasBlockGap(n: ScreenNode): Boolean =
+        n.children.zipWithNext().any { (a, b) -> isTextRun(a) && isTextRun(b) && b.bounds.top > a.bounds.bottom }
+
+    private fun isTextRun(n: ScreenNode) = n.isLeaf && n.cls.endsWith("TextView")
 
     private fun spans(n: ScreenNode): List<Span> {
         val raw = mutableListOf<Span>()
