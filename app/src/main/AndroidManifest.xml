@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- No permissions, and no internet access. Before adding one, add it to
-         config/allowed-permissions.txt with a comment saying why; the build fails otherwise. -->
+    <!-- No permissions, and no internet access. The accessibility service and tile are bound by the system; they need no <uses-permission>. -->
 
     <application
         android:allowBackup="false"
@@ -19,6 +18,32 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Reader itself. Android asks the owner before turning it on; it reads only when asked. -->
+        <service
+            android:name=".service.ReaderService"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/reader_service" />
+        </service>
+
+        <!-- Quick Settings "Read screen" tile. -->
+        <service
+            android:name=".service.ReaderTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile"
+            android:label="@string/tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>
