@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -18,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -92,17 +94,19 @@ fun SettingsScreen(
             )
 
             SectionHeading("Floating button")
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            // The whole row is the switch, so its sentence is what a screen reader says and the tap target is big.
+            Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                    .toggleable(value = floatingButton, role = Role.Switch, onValueChange = onFloatingButton),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 Text(
                     "Shows a small Newt button on the edge of the screen. Tap it to read; drag it out of the way.",
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f),
                 )
-                Switch(
-                    checked = floatingButton,
-                    onCheckedChange = onFloatingButton,
-                    modifier = Modifier.semantics { contentDescription = "Floating button" },
-                )
+                Switch(checked = floatingButton, onCheckedChange = null)
             }
         }
     }
