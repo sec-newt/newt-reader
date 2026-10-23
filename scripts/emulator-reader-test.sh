@@ -28,8 +28,9 @@ step() {
   exit 1
 }
 
+# adb shell re-splits its arguments, so a label with a space needs inner quotes.
 step "shows: Test page one$" -a io.github.secnewt.reader.debug.OPEN
-step "shows: Test page two$" -a io.github.secnewt.reader.debug.TAP --es label "Next page"
+step "shows: Test page two$" -a io.github.secnewt.reader.debug.TAP --es label "'Next page'"
 step "shows: Test page one$" -a io.github.secnewt.reader.debug.BACK
 step "closed"                -a io.github.secnewt.reader.debug.TAP --es label "Send"
 echo "Reader read, followed, went back, and closed before Send."
