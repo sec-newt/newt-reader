@@ -24,6 +24,8 @@ import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.Hyphens
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
@@ -35,9 +37,12 @@ import io.github.secnewt.reader.engine.TapKind
 import io.github.secnewt.ui.NewtFonts
 import io.github.secnewt.ui.neonOutline
 
-/** Body text with generous line spacing: at Reader's default size a line is about 48 dp, so inline links are easy to hit. */
+/**
+ * Body text with generous line spacing: at Reader's default size a line is about 48 dp, so inline links are easy to hit.
+ * Long words hyphenate rather than break at a random letter when the text is very large.
+ */
 @Composable
-fun readingStyle(): TextStyle = MaterialTheme.typography.bodyLarge.copy(lineHeight = 2.em)
+fun readingStyle(): TextStyle = MaterialTheme.typography.bodyLarge.copy(lineHeight = 2.em, hyphens = Hyphens.Auto, lineBreak = LineBreak.Paragraph)
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -47,7 +52,7 @@ fun BlockView(block: Block, onTap: (NodeRef, TapKind) -> Unit) {
             val tap = block.target?.let { t -> Modifier.clickable(onClickLabel = "Expand") { onTap(t, TapKind.FOLLOW) }.heightIn(min = 48.dp) } ?: Modifier
             Text(
                 if (block.target != null) "${block.text}  ▸" else block.text,
-                style = MaterialTheme.typography.headlineSmall.copy(fontFamily = NewtFonts.Display),
+                style = MaterialTheme.typography.headlineSmall.copy(fontFamily = NewtFonts.Display, hyphens = Hyphens.Auto, lineBreak = LineBreak.Heading),
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.fillMaxWidth().then(tap).semantics { heading() },
             )

@@ -133,21 +133,32 @@ fun ReaderScreen(
 
 @Composable
 private fun TopBar(title: String, scale: Float, onScale: (Float) -> Unit, onClose: () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
+    val titleText = @Composable { modifier: Modifier ->
         Text(
             title.ifBlank { "Newt Reader" },
             style = MaterialTheme.typography.titleLarge.copy(fontFamily = NewtFonts.Display),
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f).semantics { heading() },
+            modifier = modifier.semantics { heading() },
         )
+    }
+    val buttons = @Composable {
         BarButton("A−", "Smaller text") { onScale(ReaderPrefs.stepped(scale, up = false)) }
         BarButton("A+", "Bigger text") { onScale(ReaderPrefs.stepped(scale, up = true)) }
         BarButton("Close", null, onClose)
+    }
+    val padding = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
+    // With the phone's text size turned up, the title gets its own line instead of being squeezed to a few letters.
+    if (LocalDensity.current.fontScale >= 1.5f) {
+        Column(padding, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            titleText(Modifier.fillMaxWidth())
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) { buttons() }
+        }
+    } else {
+        Row(padding, verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            titleText(Modifier.weight(1f))
+            buttons()
+        }
     }
 }
 
