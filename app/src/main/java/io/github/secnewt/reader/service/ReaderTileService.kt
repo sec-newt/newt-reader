@@ -1,5 +1,6 @@
 package io.github.secnewt.reader.service
 
+import android.annotation.SuppressLint
 import android.app.PendingIntent
 import android.content.Intent
 import android.os.Build
@@ -18,8 +19,12 @@ class ReaderTileService : TileService() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             startActivityAndCollapse(PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_IMMUTABLE))
         } else {
-            @Suppress("DEPRECATION")
-            startActivityAndCollapse(intent)
+            openOnAndroid13(intent)
         }
     }
+
+    /** Android 13 only (minSdk 33): the PendingIntent version doesn't exist before Android 14. */
+    @Suppress("DEPRECATION")
+    @SuppressLint("StartActivityAndCollapseDeprecated")
+    private fun openOnAndroid13(intent: Intent) = startActivityAndCollapse(intent)
 }
