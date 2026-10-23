@@ -39,6 +39,10 @@ object DebugHooks {
         context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
         scope.launch {
             controller.state.collect { s ->
+                // What Reader read, so a failed emulator run shows why (test page content only; debug builds only).
+                if (s.open && !s.busy) {
+                    Log.i(TAG, "blocks: " + s.blocks.take(8).joinToString(" | ") { "${it::class.simpleName}:${it.text.take(40)}" })
+                }
                 Log.i(TAG, when {
                     !s.open -> "closed"
                     s.busy -> "busy"

@@ -23,6 +23,8 @@ step() {
   done
   echo "::error::Never saw '$expect'. Reader's log:"
   adb logcat -d -s NewtReaderTest | tail -20
+  echo "Accessibility tree of the test page:"
+  adb shell uiautomator dump /sdcard/ui.xml > /dev/null && adb shell cat /sdcard/ui.xml | tr '>' '>\n' | head -60 || true
   exit 1
 }
 
