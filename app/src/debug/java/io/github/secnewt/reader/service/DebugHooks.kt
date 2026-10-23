@@ -1,11 +1,50 @@
 package io.github.secnewt.reader.service
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.util.Log
+import io.github.secnewt.reader.engine.Block
 import io.github.secnewt.reader.reader.ReaderController
+import io.github.secnewt.reader.reader.findTarget
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
-/** Release builds: no test hooks. (The debug build's version drives the emulator test.) */
-@Suppress("UNUSED_PARAMETER")
+/**
+ * Debug build only: lets the emulator test drive Reader with adb broadcasts and see what
+ * it shows in logcat (tag NewtReaderTest). Release builds have a no-op version.
+ */
 object DebugHooks {
-    fun register(context: Context, scope: CoroutineScope, controller: ReaderController, open: () -> Unit) = Unit
+    private const val TAG = "NewtReaderTest"
+    private const val OPEN = "io.github.secnewt.reader.debug.OPEN"
+    private const val TAP = "io.github.secnewt.reader.debug.TAP"
+    private const val BACK = "io.github.secnewt.reader.debug.BACK"
+
+    fun register(context: Context, scope: CoroutineScope, controller: ReaderController, open: () -> Unit) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, intent: Intent) {
+                when (intent.action) {
+                    OPEN -> open()
+                    BACK -> controller.back()
+                    TAP -> {
+                        val label = intent.getStringExtra("label").orEmpty()
+                        val target = controller.state.value.findTarget(label)
+                        if (target == null) Log.i(TAG, "no target: $label") else controller.tap(target.first, target.second)
+                    }
+                }
+            }
+        }
+        val filter = IntentFilter().apply { addAction(OPEN); addAction(TAP); addAction(BACK) }
+        context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+        scope.launch {
+            controller.state.collect { s ->
+                Log.i(TAG, when {
+                    !s.open -> "closed"
+                    s.busy -> "busy"
+                    else -> "shows: " + (s.blocks.firstOrNull { it is Block.Heading }?.text ?: "(no heading)")
+                })
+            }
+        }
+    }
 }
