@@ -13,7 +13,7 @@ object RefMatcher {
 
     fun find(root: ScreenNode, ref: NodeRef): ScreenNode? {
         fun same(n: ScreenNode) = n.cls == ref.cls && n.label == ref.label
-        at(root, ref.path)?.let { if (same(it)) return it }
+        at(root, ref.path)?.let { if (same(it) && (ref.viewId == null || it.viewId == ref.viewId)) return it }
         val all = root.walk().toList()
         if (ref.viewId != null) all.firstOrNull { it.viewId == ref.viewId && it.label == ref.label }?.let { return it }
         if (ref.label != null) return all.filter(::same).minByOrNull { distance(it.bounds, ref.bounds) }

@@ -22,6 +22,7 @@ object Stitcher {
         val web = inWeb || n.cls.endsWith("WebView")
         when {
             n.editable || n.password -> out += Block.Field(fieldLabel(n), n.ref(), n.password, n.anyVisible())
+            isHeadingToggle(n) -> out += Block.Heading(allText(n, web), n.anyVisible(), n.ref())
             isClickableUnit(n) -> clickable(n, web)?.let { out += it }
             n.heading && allText(n, web).isNotEmpty() -> out += Block.Heading(allText(n, web), n.anyVisible())
             web && isParagraph(n) -> out += Block.Paragraph(spans(n), n.anyVisible())
@@ -30,6 +31,14 @@ object Stitcher {
             else -> n.children.forEach { visit(it, web, out) }
         }
     }
+
+    /**
+     * A clickable node holding a heading, where anything else clickable inside is unlabelled
+     * (mobile Wikipedia's section toggle: the heading plus a bare ▸ button). Tapping it expands in place.
+     */
+    private fun isHeadingToggle(n: ScreenNode) =
+        n.clickable && !n.cls.endsWith("WebView") && n.walk().any { it.heading } &&
+            n.walk().drop(1).none { it.editable || (it.clickable && allText(it, true).isNotEmpty()) }
 
     /** A clickable node with nothing clickable inside it is one control. */
     private fun isClickableUnit(n: ScreenNode) =
