@@ -81,6 +81,8 @@ permission needed.)
   Heuristic: Chromium runs live under a `WebView` ancestor; everything else gets separators.
 - **ControlRow:** ≥ 3 adjacent short clickable siblings (share/like/reply bars, toolbars)
   collapse into one row of labelled chips.
+- **Clickable headings** (mobile Wikipedia's section toggles, whose bodies aren't in the tree
+  until expanded) stay headings but are tappable (FOLLOW → expands in place). *(Added during planning, 2026-10-21.)*
 - Unicode **NFKC normalization** on all text (X's 𝚖𝚊𝚝𝚑 letters → plain).
 - Password fields → `Field("••• (hidden)")`, never contents.
 - Duplicate labels that Chromium emits twice for one control (e.g. "Save; Save") collapse.
@@ -102,6 +104,11 @@ permission needed.)
 | **ReaderTile** | Quick Settings `TileService`. Collapses the shade, waits for it to close (Settle), then triggers — otherwise it would read the shade. |
 | **FloatingButton** | Optional draggable Newt bubble on the screen edge (setting, **off by default**). Hidden while Reader is open. |
 | **SettingsActivity** | Text size, floating button on/off, and a one-line plain explanation of each plus how to assign the swipe. |
+
+> **Planning change (2026-10-21):** v1 keeps the engine as the package
+> `io.github.secnewt.reader.engine` inside `:app`, not a separate Gradle module: the shared CI
+> workflow only runs `:app` tasks, so a second module's tests would silently never run. Android
+> imports stay confined to `AndroidSnapshot.kt` so it can be extracted later.
 
 ## 🔄 Data flow
 
