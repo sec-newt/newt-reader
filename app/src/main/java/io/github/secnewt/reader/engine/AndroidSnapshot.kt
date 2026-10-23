@@ -25,7 +25,7 @@ object AndroidSnapshot {
                 scrollable = n.isScrollable,
                 editable = n.isEditable,
                 password = n.isPassword,
-                heading = n.isHeading,
+                heading = isHeading(n),
                 visible = n.isVisibleToUser,
                 bounds = Bounds(r.left, r.top, r.right, r.bottom),
                 path = path,
@@ -34,6 +34,10 @@ object AndroidSnapshot {
         }
         return Screen(root.packageName?.toString().orEmpty(), title, copy(root, emptyList()))
     }
+
+    /** Older WebView builds report headings only through the collection item info. */
+    @Suppress("DEPRECATION")
+    private fun isHeading(n: AccessibilityNodeInfo) = n.isHeading || n.collectionItemInfo?.isHeading == true
 
     /** Follows [path] (child indexes) from [root] in the live tree. */
     fun liveAt(root: AccessibilityNodeInfo, path: List<Int>): AccessibilityNodeInfo? =

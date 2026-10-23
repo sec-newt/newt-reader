@@ -46,7 +46,8 @@ object DebugHooks {
                 Log.i(TAG, when {
                     !s.open -> "closed"
                     s.busy -> "busy"
-                    else -> "shows: " + (s.blocks.firstOrNull { it is Block.Heading }?.text ?: "(no heading)")
+                    // The first heading, else the first block: the emulator's WebView doesn't always mark <h1> as a heading.
+                    else -> "shows: " + (s.blocks.firstOrNull { it is Block.Heading } ?: s.blocks.firstOrNull())?.text
                 })
             }
         }
