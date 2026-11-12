@@ -42,7 +42,8 @@ object DebugHooks {
             }
         }
         val filter = IntentFilter().apply { addAction(OPEN); addAction(TAP); addAction(BACK); addAction(DUMP) }
-        context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+        // Only adb's shell holds DUMP, so other apps on the phone can't drive Reader or ask for a dump.
+        context.registerReceiver(receiver, filter, android.Manifest.permission.DUMP, null, Context.RECEIVER_EXPORTED)
         scope.launch {
             controller.state.collect { s ->
                 // What Reader read, so a failed emulator run shows why (test page content only; debug builds only).
@@ -66,8 +67,10 @@ object DebugHooks {
         val root = window?.root ?: run { Log.i(DUMP_TAG, "no app window"); return }
         fun line(n: ScreenNode, depth: Int) {
             val flags = listOfNotNull("click".takeIf { n.clickable }, "scroll".takeIf { n.scrollable }, "edit".takeIf { n.editable },
-                "heading".takeIf { n.heading }, "hidden".takeIf { !n.visible }).joinToString(",")
-            Log.i(DUMP_TAG, "  ".repeat(depth) + "${n.cls.substringAfterLast('.')} [$flags] ${n.bounds} text=${n.text?.take(60)} desc=${n.desc?.take(60)} kids=${n.children.size}")
+                "heading".takeIf { n.heading }, "password".takeIf { n.password }, "hidden".takeIf { !n.visible }).joinToString(",")
+            // What someone typed (and any password) never goes in the log.
+            val text = if (n.password || n.editable) n.text?.let { "<${it.length} chars>" } else n.text?.take(60)
+            Log.i(DUMP_TAG, "  ".repeat(depth) + "${n.cls.substringAfterLast('.')} [$flags] ${n.bounds} text=$text desc=${n.desc?.take(60)} kids=${n.children.size}")
             n.children.forEach { line(it, depth + 1) }
         }
         line(AndroidSnapshot.capture(root, window.title?.toString().orEmpty()).root, 0)
