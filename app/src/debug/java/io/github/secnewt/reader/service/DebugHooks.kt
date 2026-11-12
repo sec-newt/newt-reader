@@ -1,10 +1,14 @@
 package io.github.secnewt.reader.service
 
+import android.accessibilityservice.AccessibilityService
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.util.Log
+import android.view.accessibility.AccessibilityWindowInfo
+import io.github.secnewt.reader.engine.AndroidSnapshot
+import io.github.secnewt.reader.engine.ScreenNode
 import io.github.secnewt.reader.engine.Block
 import io.github.secnewt.reader.reader.ReaderController
 import io.github.secnewt.reader.reader.findTarget
@@ -20,6 +24,7 @@ object DebugHooks {
     private const val OPEN = "io.github.secnewt.reader.debug.OPEN"
     private const val TAP = "io.github.secnewt.reader.debug.TAP"
     private const val BACK = "io.github.secnewt.reader.debug.BACK"
+    private const val DUMP = "io.github.secnewt.reader.debug.DUMP"
 
     fun register(context: Context, scope: CoroutineScope, controller: ReaderController, open: () -> Unit) {
         val receiver = object : BroadcastReceiver() {
@@ -27,6 +32,7 @@ object DebugHooks {
                 when (intent.action) {
                     OPEN -> open()
                     BACK -> controller.back()
+                    DUMP -> dump(context)
                     TAP -> {
                         val label = intent.getStringExtra("label").orEmpty()
                         val target = controller.state.value.findTarget(label)
@@ -35,7 +41,7 @@ object DebugHooks {
                 }
             }
         }
-        val filter = IntentFilter().apply { addAction(OPEN); addAction(TAP); addAction(BACK) }
+        val filter = IntentFilter().apply { addAction(OPEN); addAction(TAP); addAction(BACK); addAction(DUMP) }
         context.registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
         scope.launch {
             controller.state.collect { s ->
@@ -52,4 +58,20 @@ object DebugHooks {
             }
         }
     }
+
+    /** Logs the raw tree of the app on screen, one node per line (tag NewtReaderDump), to see what an app shares. */
+    private fun dump(context: Context) {
+        val service = context as? AccessibilityService ?: return
+        val window = service.windows.filter { it.type == AccessibilityWindowInfo.TYPE_APPLICATION }.maxByOrNull { it.layer }
+        val root = window?.root ?: run { Log.i(DUMP_TAG, "no app window"); return }
+        fun line(n: ScreenNode, depth: Int) {
+            val flags = listOfNotNull("click".takeIf { n.clickable }, "scroll".takeIf { n.scrollable }, "edit".takeIf { n.editable },
+                "heading".takeIf { n.heading }, "hidden".takeIf { !n.visible }).joinToString(",")
+            Log.i(DUMP_TAG, "  ".repeat(depth) + "${n.cls.substringAfterLast('.')} [$flags] ${n.bounds} text=${n.text?.take(60)} desc=${n.desc?.take(60)} kids=${n.children.size}")
+            n.children.forEach { line(it, depth + 1) }
+        }
+        line(AndroidSnapshot.capture(root, window.title?.toString().orEmpty()).root, 0)
+    }
+
+    private const val DUMP_TAG = "NewtReaderDump"
 }
