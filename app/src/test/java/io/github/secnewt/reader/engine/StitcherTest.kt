@@ -115,7 +115,7 @@ class StitcherTest {
     @Test fun linkedPictureIsATappablePicture() {
         val img = Stitcher.stitch(web(pictureLink("Lines of letters of decreasing size"))).single() as Block.Image
         assertEquals("Lines of letters of decreasing size", img.description)
-        assertEquals(listOf(0, 0, 0), img.target?.path)
+        assertEquals(listOf(0, 0), img.target?.path)
     }
 
     @Test fun pictureFileNameIsNotADescription() {
