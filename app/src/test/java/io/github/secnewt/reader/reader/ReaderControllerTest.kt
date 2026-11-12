@@ -101,6 +101,17 @@ class ReaderControllerTest {
         assertFalse(c.state.value.open)
     }
 
+    @Test fun tapThatKeepsThePageDoesNotCountForBack() = runTest {
+        // Like, or "Show more" expanding in place: same page, so Back should close Reader, not go back in the app.
+        val port = FakePort(page("One", "intro", "[Show more]"), page("One", "intro", "more text", "[Show more]"))
+        val c = controller(port)
+        c.open(); advanceUntilIdle()
+        c.button("Show more").let { c.tap(it.target, it.kind) }; advanceUntilIdle()
+        c.back(); advanceUntilIdle()
+        assertEquals(0, port.backs)
+        assertFalse(c.state.value.open)
+    }
+
     @Test fun backOnFirstPageCloses() = runTest {
         val port = FakePort(page("One", "intro"))
         val c = controller(port)

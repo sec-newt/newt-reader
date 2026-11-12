@@ -15,7 +15,7 @@ object Stitcher {
     fun stitch(screen: Screen): List<Block> {
         val out = mutableListOf<Block>()
         visit(screen.root, inWeb = false, out)
-        return foldControlRows(dropRepeats(out))
+        return addReadReplies(foldControlRows(dropRepeats(out)))
     }
 
     private fun visit(n: ScreenNode, inWeb: Boolean, out: MutableList<Block>) {
@@ -44,23 +44,47 @@ object Stitcher {
         n.clickable && !n.cls.endsWith("WebView") && n.walk().any { it.heading } &&
             n.walk().drop(1).none { it.editable || (it.clickable && allText(it, true).isNotEmpty()) }
 
-    /** A clickable node with nothing clickable inside it is one control. */
-    private fun isClickableUnit(n: ScreenNode) =
-        n.clickable && !n.cls.endsWith("WebView") && n.walk().drop(1).none { it.clickable || it.editable }
+    /**
+     * A clickable node with nothing clickable inside it is one control. So is a labelled one whose
+     * only clickable insides are unlabelled (X draws each action's icon as its own tappable piece).
+     */
+    private fun isClickableUnit(n: ScreenNode): Boolean {
+        if (!n.clickable || n.cls.endsWith("WebView")) return false
+        val inside = n.walk().drop(1)
+        if (inside.any { it.editable }) return false
+        if (inside.none { it.clickable }) return true
+        val labelled = !n.text.isNullOrBlank() || !n.desc.isNullOrBlank()
+        return labelled && inside.none { it.clickable && (!it.desc.isNullOrBlank() || allText(it, true).isNotEmpty()) }
+    }
 
     private fun clickable(n: ScreenNode, web: Boolean): Block? {
         // A link around a big picture and nothing else opens the full picture: nothing to read there.
         val leaves = n.walk().filter { it.isLeaf }.toList()
         val picture = leaves.singleOrNull()?.takeIf { isImage(it) && isBig(it) }
         if (picture != null) return Block.Image(describe(picture), n.anyVisible(), n.ref())
-        val text = n.label?.let(::clean)?.ifEmpty { null } ?: allText(n, web)
+        val text = controlLabel(n) ?: allText(n, web)
         if (text.isEmpty()) return null
+        Actions.parse(text)?.let { return Block.Button(Control(text, n.ref(), it.kind, it), n.anyVisible()) }
         // A clickable heading (a collapsed section's toggle) stays a heading, and tapping it expands in place.
         if (n.walk().any { it.heading }) return Block.Heading(text, n.anyVisible(), n.ref())
         if (text.length >= SHORT) return Block.ListItem(text, n.ref(), n.anyVisible())
         // In web content, Chromium reports <button> as a Button class; anything else clickable is a link.
         val kind = if (web && !n.cls.endsWith("Button")) TapKind.FOLLOW else Classifier.forButton(text)
         return Block.Button(Control(text, n.ref(), kind), n.anyVisible())
+    }
+
+    /**
+     * What a control says. The description wins when it says more than the text ("analytics" vs
+     * "14370 views. View post analytics") or the text is only an id (X's time stamps link by post number).
+     */
+    private fun controlLabel(n: ScreenNode): String? {
+        val text = n.text?.let(::clean)?.ifEmpty { null }
+        val desc = n.desc?.let(::clean)?.ifEmpty { null }
+        return when {
+            text == null -> desc ?: n.hint?.let(::clean)?.ifEmpty { null }
+            desc != null && (desc.contains(text, ignoreCase = true) || text.all { it.isDigit() }) -> desc
+            else -> text
+        }
     }
 
     private fun isParagraph(n: ScreenNode): Boolean =
@@ -127,6 +151,23 @@ object Stitcher {
 
     private fun dropRepeats(blocks: List<Block>): List<Block> =
         blocks.filterIndexed { i, b -> i == 0 || blocks[i - 1].key != b.key }
+
+    /**
+     * Reply opens the box for writing one; to read a post's replies you open the post, which its
+     * time stamp links to. So a row with "47 Replies. Reply" gets a "47 replies" control in front
+     * that opens the post (the nearest time stamp above it, back to the previous post's row).
+     */
+    private fun addReadReplies(blocks: List<Block>): List<Block> = blocks.mapIndexed { i, b ->
+        if (b !is Block.ControlRow) return@mapIndexed b
+        val count = b.controls.firstOrNull { it.action?.action == Action.REPLY }?.action?.count ?: return@mapIndexed b
+        if (count <= 0) return@mapIndexed b
+        val stamp = blocks.subList(0, i).asReversed()
+            .takeWhile { prev -> !(prev is Block.ControlRow && prev.controls.any { it.action != null }) }
+            .flatMap { prev -> when (prev) { is Block.Button -> listOf(prev.control); is Block.ControlRow -> prev.controls.asReversed(); else -> emptyList() } }
+            .firstOrNull { it.kind == TapKind.FOLLOW && Actions.timeStamp.matches(it.label) } ?: return@mapIndexed b
+        val label = if (count == 1L) "1 reply" else "$count replies"
+        b.copy(controls = listOf(Control(label, stamp.target, TapKind.FOLLOW, ActionInfo(Action.READ_REPLIES, count))) + b.controls)
+    }
 
     private fun foldControlRows(blocks: List<Block>): List<Block> {
         val out = mutableListOf<Block>()

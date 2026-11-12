@@ -61,8 +61,7 @@ class ReaderController(
         run {
             _state.update { it.copy(busy = true, message = null) }
             val worked = port.tap(target)
-            if (worked) depth++
-            reread(message = if (worked) null else CHANGED)
+            reread(message = if (worked) null else CHANGED, countsForBack = worked)
         }
     }
 
@@ -104,14 +103,17 @@ class ReaderController(
         return Stitcher.stitch(screen)
     }
 
-    private suspend fun reread(message: String?) {
+    /** Reads again after a tap or Back. A tap that opened a new page counts for Back ([countsForBack]); one that changed it in place doesn't. */
+    private suspend fun reread(message: String?, countsForBack: Boolean = false) {
         emptyLoads = 0
         val before = _state.value.blocks.firstOrNull()?.key
         val blocks = port.read()?.let(::stitched)
         val screen = lastScreen
         if (blocks.isNullOrEmpty() || screen == null) return nothingShared()
-        // Same first block = the page didn't change (e.g. "Show more" expanded in place): keep the reader's place.
-        show(screen, blocks, jumpTo = if (blocks.first().key == before) null else 0, message = message)
+        // Same first block = the page didn't change (a like, "Show more" expanding in place): keep the reader's place.
+        val samePage = blocks.first().key == before
+        if (countsForBack && !samePage) depth++
+        show(screen, blocks, jumpTo = if (samePage) null else 0, message = message)
     }
 
     private suspend fun nothingShared() {

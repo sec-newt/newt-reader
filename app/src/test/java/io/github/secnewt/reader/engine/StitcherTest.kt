@@ -139,6 +139,48 @@ class StitcherTest {
         assertEquals(listOf("Weekly news", "Morning class 9:30"), Stitcher.stitch(web(page)).map { it.text })
     }
 
+    /** An X post's action bar, as the phone reported it (counts made up). */
+    private fun xPost(): Array<ScreenNode> {
+        val icon = ScreenNode("android.widget.TextView", text = "", clickable = true)
+        fun action(cls: String, text: String? = null, desc: String? = null, shown: String? = null) =
+            ScreenNode("android.view.View", children = listOf(ScreenNode(cls, text = text, desc = desc, clickable = true,
+                children = if (shown == null) emptyList() else listOf(ScreenNode("android.view.View", children = listOf(
+                    ScreenNode("android.view.View", children = listOf(icon)), ScreenNode("android.widget.TextView", text = shown)))))))
+        val time = ScreenNode("android.view.View", text = "2120636067879571488", desc = "7 hours ago", clickable = true,
+            children = listOf(ScreenNode("android.view.View", text = "7h")))
+        val body = ScreenNode("android.view.View", children = listOf(tv("A post about tiling window managers.")))
+        val bar = ScreenNode("android.view.View", text = "47 replies, 32 reposts, 1419 likes", children = listOf(
+            action("android.widget.Button", desc = "47 Replies. Reply"),
+            action("android.widget.Button", text = "32 reposts. Repost", shown = "32"),
+            action("android.widget.Button", desc = "1419 Likes. Like"),
+            action("android.view.View", text = "analytics", desc = "14370 views. View post analytics", shown = "14K"),
+        ))
+        return arrayOf(time, body, bar)
+    }
+
+    @Test fun xActionBarIsOneRowOfActions() {
+        val blocks = Stitcher.stitch(web(*xPost()))
+        val row = blocks.last() as Block.ControlRow
+        assertEquals(
+            listOf(Action.READ_REPLIES, Action.REPLY, Action.REPOST, Action.LIKE, Action.VIEWS),
+            row.controls.map { it.action?.action },
+        )
+        assertEquals(listOf(47L, 47L, 32L, 1419L, 14370L), row.controls.map { it.action?.count })
+        // No stray "32" or "14K" left over from the icons X draws inside its buttons.
+        assertFalse(blocks.any { it.text == "32" || it.text == "14K" })
+    }
+
+    @Test fun readRepliesOpensThePostThroughItsTimeStamp() {
+        val blocks = Stitcher.stitch(web(*xPost()))
+        val time = blocks.filterIsInstance<Block.Button>().single { it.text == "7 hours ago" }
+        val read = (blocks.last() as Block.ControlRow).controls.first()
+        assertEquals("47 replies", read.label)
+        assertEquals(TapKind.FOLLOW, read.kind)
+        assertEquals(time.control.target, read.target)
+        val reply = (blocks.last() as Block.ControlRow).controls[1]
+        assertEquals(TapKind.CLOSE_FIRST, reply.kind)
+    }
+
     @Test fun clickableHeadingIsATappableHeading() {
         val toggle = ScreenNode("android.view.View", clickable = true, children = listOf(
             ScreenNode("android.widget.TextView", text = "Classification", heading = true), ScreenNode("android.view.View")))

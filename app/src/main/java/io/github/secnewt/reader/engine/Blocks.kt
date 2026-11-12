@@ -10,8 +10,8 @@ sealed interface Span {
     data class Link(override val text: String, val target: NodeRef) : Span
 }
 
-/** One tappable control: what it says, where it is, and what tapping it does. */
-data class Control(val label: String, val target: NodeRef, val kind: TapKind)
+/** One tappable control: what it says, where it is, and what tapping it does. [action] is set for reply, like, share and the like. */
+data class Control(val label: String, val target: NodeRef, val kind: TapKind, val action: ActionInfo? = null)
 
 /** One piece of the reading view, in reading order. */
 sealed interface Block {

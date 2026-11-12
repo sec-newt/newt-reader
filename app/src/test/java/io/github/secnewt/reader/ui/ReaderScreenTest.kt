@@ -3,11 +3,14 @@ package io.github.secnewt.reader.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
+import io.github.secnewt.reader.engine.Action
+import io.github.secnewt.reader.engine.ActionInfo
 import io.github.secnewt.reader.engine.Block
 import io.github.secnewt.reader.engine.Bounds
 import io.github.secnewt.reader.engine.Control
@@ -43,6 +46,14 @@ class ReaderScreenTest {
                 Span.Plain(". Without treatment it can make everyday tasks hard."),
             ), true),
             Block.ControlRow(listOf(Control("Article", ref, TapKind.FOLLOW), Control("Talk", ref, TapKind.FOLLOW), Control("Edit", ref, TapKind.CLOSE_FIRST)), true),
+            Block.ControlRow(listOf(
+                Control("58 replies", ref, TapKind.FOLLOW, ActionInfo(Action.READ_REPLIES, 58)),
+                Control("58 Replies. Reply", ref, TapKind.CLOSE_FIRST, ActionInfo(Action.REPLY, 58)),
+                Control("179 reposts. Repost", ref, TapKind.CLOSE_FIRST, ActionInfo(Action.REPOST, 179)),
+                Control("4473 Likes. Liked", ref, TapKind.FOLLOW, ActionInfo(Action.LIKE, 4473, on = true)),
+                Control("Bookmark", ref, TapKind.FOLLOW, ActionInfo(Action.BOOKMARK)),
+                Control("Share post", ref, TapKind.CLOSE_FIRST, ActionInfo(Action.SHARE)),
+            ), true),
             Block.ListItem("Today: sunny. High 81. Low 58.", ref, true),
             Block.Button(Control("Send", ref, TapKind.CLOSE_FIRST), true),
             Block.Field("Search", ref, false, true),
@@ -84,5 +95,13 @@ class ReaderScreenTest {
         composeRule.setContent { NewtTheme(darkTheme = true) { Screen { _, kind -> tapped = kind } } }
         composeRule.onNodeWithText("See picture", substring = true).performScrollTo().performClick()
         assertEquals(TapKind.CLOSE_FIRST, tapped)
+    }
+
+    @Test fun likeStaysInReaderAndScreenReadersHearTheFullLabel() {
+        var tapped: TapKind? = null
+        composeRule.setContent { NewtTheme(darkTheme = true) { Screen { _, kind -> tapped = kind } } }
+        composeRule.onNodeWithContentDescription("4473 Likes. Liked").performScrollTo().performClick()
+        assertEquals(TapKind.FOLLOW, tapped)
+        composeRule.onNodeWithContentDescription("58 Replies. Reply, leaves Reader").assertExists()
     }
 }

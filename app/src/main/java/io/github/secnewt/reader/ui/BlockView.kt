@@ -6,7 +6,20 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Reply
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -14,6 +27,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -30,7 +44,11 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
+import io.github.secnewt.reader.engine.Action
+import io.github.secnewt.reader.engine.ActionInfo
+import io.github.secnewt.reader.engine.Actions
 import io.github.secnewt.reader.engine.Block
+import io.github.secnewt.reader.engine.Control
 import io.github.secnewt.reader.engine.NodeRef
 import io.github.secnewt.reader.engine.Span
 import io.github.secnewt.reader.engine.TapKind
@@ -68,8 +86,13 @@ fun BlockView(block: Block, onTap: (NodeRef, TapKind) -> Unit) {
         is Block.Button -> ReaderButton(block.control.label, block.control.kind) { onTap(block.control.target, block.control.kind) }
         is Block.ControlRow -> FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             block.controls.forEach { c ->
-                OutlinedButton(onClick = { onTap(c.target, c.kind) }, border = neonOutline(), modifier = Modifier.heightIn(min = 48.dp)) {
-                    Text(if (c.kind == TapKind.CLOSE_FIRST) "${c.label} ↗" else c.label, style = MaterialTheme.typography.titleMedium)
+                val action = c.action
+                if (action != null) {
+                    ActionChip(c, action) { onTap(c.target, c.kind) }
+                } else {
+                    OutlinedButton(onClick = { onTap(c.target, c.kind) }, border = neonOutline(), modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(if (c.kind == TapKind.CLOSE_FIRST) "${c.label} ↗" else c.label, style = MaterialTheme.typography.titleMedium)
+                    }
                 }
             }
         }
@@ -87,6 +110,41 @@ fun BlockView(block: Block, onTap: (NodeRef, TapKind) -> Unit) {
                 style = readingStyle().copy(fontStyle = FontStyle.Italic),
             )
         }
+    }
+}
+
+/**
+ * A post action as a big icon and its count ("♥ 4.5K"). Screen readers hear the app's own full
+ * label ("4473 Likes. Like"). "N replies" and "Reply" keep their words: they're the two easy to mix up.
+ */
+@Composable
+private fun ActionChip(c: Control, action: ActionInfo, onClick: () -> Unit) {
+    val icon = when (action.action) {
+        Action.READ_REPLIES -> Icons.Outlined.ChatBubbleOutline
+        Action.REPLY -> Icons.AutoMirrored.Filled.Reply
+        Action.REPOST -> Icons.Filled.Repeat
+        Action.LIKE -> if (action.on) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder
+        Action.BOOKMARK -> if (action.on) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder
+        Action.SHARE -> Icons.Filled.Share
+        Action.VIEWS -> Icons.Outlined.BarChart
+    }
+    val words = when (action.action) {
+        Action.READ_REPLIES -> c.label
+        Action.REPLY -> "Reply"
+        else -> action.count?.takeIf { it > 0 }?.let(Actions::compact)
+    }
+    val leaves = c.kind == TapKind.CLOSE_FIRST
+    OutlinedButton(
+        onClick = onClick,
+        border = neonOutline(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        modifier = Modifier.heightIn(min = 56.dp).semantics(mergeDescendants = true) {
+            contentDescription = if (leaves) "${c.label}, leaves Reader" else c.label
+        },
+    ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp))
+        words?.let { Text(it, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 8.dp).clearAndSetSemantics {}) }
+        if (leaves) Text("↗", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 6.dp).clearAndSetSemantics {})
     }
 }
 
