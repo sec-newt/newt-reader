@@ -124,6 +124,23 @@ class StitcherTest {
         assertTrue(img.target != null)
     }
 
+    @Test fun offScreenPictureLinkIsStillAPicture() {
+        // Below the fold Android reports zero height; Wikipedia puts the file name in the image's text.
+        val name = "500px-Batsuit_from_The_Dark_Knight_Rises_film_-_closer_view.jpg?utm_source=en.wikipedia"
+        val link = ScreenNode("android.view.View", desc = name, clickable = true, visible = false, bounds = Bounds(210, 2337, 871, 2337),
+            children = listOf(ScreenNode("android.widget.Image", text = name, visible = false, bounds = Bounds(210, 2337, 871, 2337))))
+        val img = Stitcher.stitch(web(link)).single() as Block.Image
+        assertEquals(null, img.description)
+        assertTrue(img.target != null)
+    }
+
+    @Test fun spaceBetweenTwoLinksIsKept() {
+        val p = Stitcher.stitch(web(ScreenNode("android.view.View", children = listOf(
+            tv("worn by the "), link("superhero"), tv(" "), link("Batman"), tv(", which appears"),
+        )))).single() as Block.Paragraph
+        assertEquals("worn by the superhero Batman, which appears", p.text)
+    }
+
     @Test fun smallLinkedLogoStaysAButton() {
         val b = Stitcher.stitch(web(pictureLink("Wikipedia", w = 373, h = 63))).single()
         assertTrue(b is Block.Button)

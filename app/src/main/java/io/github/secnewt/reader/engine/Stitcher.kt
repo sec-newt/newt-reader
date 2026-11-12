@@ -108,7 +108,7 @@ object Stitcher {
             when {
                 x.clickable -> allText(x, true).ifEmpty { x.label?.let(::clean).orEmpty() }
                     .takeIf { it.isNotEmpty() }?.let { raw += Span.Link(it, x.ref()) }
-                x.isLeaf -> x.label?.let { raw += Span.Plain(nfkc(it)) }
+                x.isLeaf -> words(x)?.let { raw += Span.Plain(nfkc(it)) }
                 else -> x.children.forEach(::go)
             }
         }
@@ -130,7 +130,10 @@ object Stitcher {
 
     /** Every leaf's words in order; joined with nothing on the web (runs carry their own spaces), new lines elsewhere. */
     private fun allText(n: ScreenNode, web: Boolean): String =
-        clean(n.walk().filter { it.isLeaf }.mapNotNull { it.label }.map(::nfkc).joinToString(if (web) "" else "\n"))
+        clean(n.walk().filter { it.isLeaf }.mapNotNull(::words).map(::nfkc).joinToString(if (web) "" else "\n"))
+
+    /** A leaf's words. A run that is only a space still counts on the web: it's what keeps two links apart. */
+    private fun words(n: ScreenNode): String? = n.text?.takeIf { it.isNotEmpty() && (it.isNotBlank() || it == " ") } ?: n.label
 
     private fun fieldLabel(n: ScreenNode): String =
         clean(listOfNotNull(n.hint, n.desc, if (n.password) null else n.text).firstOrNull { it.isNotBlank() } ?: "text field")
@@ -140,10 +143,14 @@ object Stitcher {
     /** Skip small unlabelled icons; keep described images and big pictures. */
     private fun worthShowing(n: ScreenNode) = describe(n) != null || isBig(n)
 
-    private fun isBig(n: ScreenNode) = n.bounds.right - n.bounds.left >= 300 && n.bounds.bottom - n.bounds.top >= 200
+    /** At least 300 × 200 px. Off-screen, Android reports zero height, so only the width can tell. */
+    private fun isBig(n: ScreenNode): Boolean {
+        val h = n.bounds.bottom - n.bounds.top
+        return n.bounds.right - n.bounds.left >= 300 && (h >= 200 || h == 0)
+    }
 
     /** The image's description, unless it's only a file name (what browsers show when a picture has no alt text). */
-    private fun describe(n: ScreenNode): String? = n.desc?.let(::clean)?.takeIf { it.isNotEmpty() && !FILE_NAME.matches(it) }
+    private fun describe(n: ScreenNode): String? = n.label?.let(::clean)?.takeIf { it.isNotEmpty() && !FILE_NAME.matches(it) }
 
     private val FILE_NAME = Regex("""(?i)(\d+px-)?\S+\.(jpe?g|png|gif|svg|webp|tiff?)|\d+px-\S+|\S*_\S*""")
 
