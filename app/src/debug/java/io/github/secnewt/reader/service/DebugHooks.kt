@@ -70,7 +70,7 @@ object DebugHooks {
                 "heading".takeIf { n.heading }, "password".takeIf { n.password }, "hidden".takeIf { !n.visible }).joinToString(",")
             // What someone typed (and any password) never goes in the log.
             val text = if (n.password || n.editable) n.text?.let { "<${it.length} chars>" } else n.text?.take(60)
-            Log.i(DUMP_TAG, "  ".repeat(depth) + "${n.cls.substringAfterLast('.')} [$flags] ${n.bounds} text=$text desc=${n.desc?.take(60)} kids=${n.children.size}")
+            Log.i(DUMP_TAG, "  ".repeat(depth) + "${n.cls.substringAfterLast('.')} [$flags] ${n.bounds} text=$text desc=${n.desc?.take(60)} kids=${n.children.size}" + (n.paragraphs?.let { " laidOut=${it.size} paragraphs" } ?: ""))
             n.children.forEach { line(it, depth + 1) }
         }
         line(AndroidSnapshot.capture(root, window.title?.toString().orEmpty()).root, 0)

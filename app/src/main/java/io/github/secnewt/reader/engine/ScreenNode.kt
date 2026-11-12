@@ -22,6 +22,8 @@ data class ScreenNode(
     val heading: Boolean = false,
     val visible: Boolean = true,
     val bounds: Bounds = Bounds(0, 0, 0, 0),
+    /** Set when [text] came glued together and [TextLayout] rebuilt its paragraphs from where the letters sit. */
+    val paragraphs: List<String>? = null,
     val path: List<Int> = emptyList(),
     val children: List<ScreenNode> = emptyList(),
 ) {

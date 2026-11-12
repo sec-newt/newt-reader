@@ -22,6 +22,10 @@ object Stitcher {
         val web = inWeb || n.cls.endsWith("WebView")
         when {
             n.editable || n.password -> out += Block.Field(fieldLabel(n), n.ref(), n.password, n.anyVisible())
+            n.paragraphs != null -> n.paragraphs.forEach { out += Block.Paragraph(listOf(Span.Plain(it)), n.visible) }
+            // A page drawn as a picture with its text laid over it (PDF viewers): the text, not an "Image" placeholder.
+            n.children.any { it.paragraphs != null } ->
+                n.children.filterNot { it.isLeaf && isImage(it) && describe(it) == null }.forEach { visit(it, web, out) }
             isHeadingToggle(n) -> out += Block.Heading(allText(n, web), n.anyVisible(), n.ref())
             isClickableUnit(n) -> clickable(n, web)?.let { out += it }
             n.heading && allText(n, web).isNotEmpty() -> out += Block.Heading(allText(n, web), n.anyVisible())

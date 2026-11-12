@@ -130,6 +130,15 @@ class StitcherTest {
         assertEquals("Wikipedia", b.text)
     }
 
+    @Test fun laidOutTextBecomesItsParagraphsWithoutThePagePicture() {
+        // A PDF viewer: the page drawn as a picture, and its text as one glued string that TextLayout split up.
+        val page = ScreenNode("android.view.View", children = listOf(
+            ScreenNode("android.widget.Image", bounds = Bounds(0, 0, 1080, 2000)),
+            ScreenNode("android.widget.TextView", text = "Weekly newsMorning class 9:30", paragraphs = listOf("Weekly news", "Morning class 9:30")),
+        ))
+        assertEquals(listOf("Weekly news", "Morning class 9:30"), Stitcher.stitch(web(page)).map { it.text })
+    }
+
     @Test fun clickableHeadingIsATappableHeading() {
         val toggle = ScreenNode("android.view.View", clickable = true, children = listOf(
             ScreenNode("android.widget.TextView", text = "Classification", heading = true), ScreenNode("android.view.View")))
