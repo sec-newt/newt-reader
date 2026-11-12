@@ -2,11 +2,14 @@ package io.github.secnewt.reader.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasScrollToNodeAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import io.github.secnewt.reader.engine.Action
@@ -93,14 +96,16 @@ class ReaderScreenTest {
     @Test fun tappingAPictureLinkReportsCloseFirst() {
         var tapped: TapKind? = null
         composeRule.setContent { NewtTheme(darkTheme = true) { Screen { _, kind -> tapped = kind } } }
-        composeRule.onNodeWithText("See picture", substring = true).performScrollTo().performClick()
+        composeRule.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("See picture", substring = true))
+        composeRule.onNodeWithText("See picture", substring = true).performClick()
         assertEquals(TapKind.CLOSE_FIRST, tapped)
     }
 
     @Test fun likeStaysInReaderAndScreenReadersHearTheFullLabel() {
         var tapped: TapKind? = null
         composeRule.setContent { NewtTheme(darkTheme = true) { Screen { _, kind -> tapped = kind } } }
-        composeRule.onNodeWithContentDescription("4473 Likes. Liked").performScrollTo().performClick()
+        composeRule.onNode(hasScrollToNodeAction()).performScrollToNode(hasContentDescription("4473 Likes. Liked"))
+        composeRule.onNodeWithContentDescription("4473 Likes. Liked").performClick()
         assertEquals(TapKind.FOLLOW, tapped)
         composeRule.onNodeWithContentDescription("58 Replies. Reply, leaves Reader").assertExists()
     }
