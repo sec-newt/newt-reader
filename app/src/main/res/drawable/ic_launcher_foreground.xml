@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Newt Reader icon: the Tokyo Night blue-to-purple newt with an orange badge holding an open book.
+<!-- Newt Reader icon: the Tokyo Night blue-to-purple newt with an orange badge holding round reading glasses.
      Give each app its own badge color and a symbol inside (Phone: green handset, Home: cyan ">_").
      Drawn on a 100x100 grid, scaled into the adaptive icon's safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
@@ -64,7 +64,8 @@
         <path android:fillColor="#FF0B0C14" android:pathData="M39.3,17.5 a2.2,2.2 0 1,0 4.4,0 a2.2,2.2 0 1,0 -4.4,0 Z M48.3,17.5 a2.2,2.2 0 1,0 4.4,0 a2.2,2.2 0 1,0 -4.4,0 Z" />
         <path android:fillColor="#FF0B0C14" android:pathData="M56.25,75 a18.75,18.75 0 1,0 37.5,0 a18.75,18.75 0 1,0 -37.5,0 Z" />
         <path android:fillColor="#FFFF9E64" android:pathData="M58,75 a17,17 0 1,0 34,0 a17,17 0 1,0 -34,0 Z" />
-        <!-- Reader's badge symbol: an open book. -->
-        <path android:fillColor="#FF0B0C14" android:pathData="M65,67 L74,69.5 L74,83 L65,80.5 Z M76,69.5 L85,67 L85,80.5 L76,83 Z" />
+        <!-- Reader's badge symbol: round reading glasses (Reader helps you see the screen; it isn't an e-reader). -->
+        <path android:fillColor="#FF0B0C14" android:fillType="evenOdd" android:pathData="M61.5,76 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 Z M63.9,76 a3.6,3.6 0 1,0 7.2,0 a3.6,3.6 0 1,0 -7.2,0 Z M76.5,76 a6,6 0 1,0 12,0 a6,6 0 1,0 -12,0 Z M78.9,76 a3.6,3.6 0 1,0 7.2,0 a3.6,3.6 0 1,0 -7.2,0 Z" />
+        <path android:fillColor="#FF0B0C14" android:pathData="M73.4,73.2 L76.6,73.2 L76.6,74.6 L73.4,74.6 Z" />
     </group>
 </vector>
