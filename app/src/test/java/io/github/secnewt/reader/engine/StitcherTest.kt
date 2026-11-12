@@ -108,6 +108,28 @@ class StitcherTest {
         assertTrue(blocks[1] is Block.Image)
     }
 
+    /** A web link wrapping a picture (Wikipedia's article images): Chromium copies the alt text, or the file name, onto both. */
+    private fun pictureLink(desc: String, w: Int = 528, h: Int = 400) = ScreenNode("android.view.View", desc = desc, clickable = true,
+        bounds = Bounds(0, 0, w, h), children = listOf(ScreenNode("android.widget.Image", desc = desc, bounds = Bounds(0, 0, w, h))))
+
+    @Test fun linkedPictureIsATappablePicture() {
+        val img = Stitcher.stitch(web(pictureLink("Lines of letters of decreasing size"))).single() as Block.Image
+        assertEquals("Lines of letters of decreasing size", img.description)
+        assertEquals(listOf(0, 0, 0), img.target?.path)
+    }
+
+    @Test fun pictureFileNameIsNotADescription() {
+        val img = Stitcher.stitch(web(pictureLink("500px-Batsuit_from_The_Dark_Knight_Rises.jpg"))).single() as Block.Image
+        assertEquals(null, img.description)
+        assertTrue(img.target != null)
+    }
+
+    @Test fun smallLinkedLogoStaysAButton() {
+        val b = Stitcher.stitch(web(pictureLink("Wikipedia", w = 373, h = 63))).single()
+        assertTrue(b is Block.Button)
+        assertEquals("Wikipedia", b.text)
+    }
+
     @Test fun clickableHeadingIsATappableHeading() {
         val toggle = ScreenNode("android.view.View", clickable = true, children = listOf(
             ScreenNode("android.widget.TextView", text = "Classification", heading = true), ScreenNode("android.view.View")))

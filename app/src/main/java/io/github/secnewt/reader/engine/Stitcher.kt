@@ -26,7 +26,7 @@ object Stitcher {
             isClickableUnit(n) -> clickable(n, web)?.let { out += it }
             n.heading && allText(n, web).isNotEmpty() -> out += Block.Heading(allText(n, web), n.anyVisible())
             web && isParagraph(n) -> out += Block.Paragraph(spans(n), n.anyVisible())
-            n.isLeaf && isImage(n) -> if (worthShowing(n)) out += Block.Image(n.desc?.let(::clean)?.ifEmpty { null }, n.visible)
+            n.isLeaf && isImage(n) -> if (worthShowing(n)) out += Block.Image(describe(n), n.visible)
             n.isLeaf -> n.label?.let(::clean)?.takeIf { it.isNotEmpty() }?.let { out += Block.Paragraph(listOf(Span.Plain(it)), n.visible) }
             else -> n.children.forEach { visit(it, web, out) }
         }
@@ -45,6 +45,10 @@ object Stitcher {
         n.clickable && !n.cls.endsWith("WebView") && n.walk().drop(1).none { it.clickable || it.editable }
 
     private fun clickable(n: ScreenNode, web: Boolean): Block? {
+        // A link around a big picture and nothing else opens the full picture: nothing to read there.
+        val leaves = n.walk().filter { it.isLeaf }.toList()
+        val picture = leaves.singleOrNull()?.takeIf { isImage(it) && isBig(it) }
+        if (picture != null) return Block.Image(describe(picture), n.anyVisible(), n.ref())
         val text = n.label?.let(::clean)?.ifEmpty { null } ?: allText(n, web)
         if (text.isEmpty()) return null
         // A clickable heading (a collapsed section's toggle) stays a heading, and tapping it expands in place.
@@ -106,8 +110,14 @@ object Stitcher {
     private fun isImage(n: ScreenNode) = n.cls.endsWith("Image") || n.cls.endsWith("ImageView")
 
     /** Skip small unlabelled icons; keep described images and big pictures. */
-    private fun worthShowing(n: ScreenNode) =
-        !n.desc.isNullOrBlank() || (n.bounds.right - n.bounds.left >= 300 && n.bounds.bottom - n.bounds.top >= 200)
+    private fun worthShowing(n: ScreenNode) = describe(n) != null || isBig(n)
+
+    private fun isBig(n: ScreenNode) = n.bounds.right - n.bounds.left >= 300 && n.bounds.bottom - n.bounds.top >= 200
+
+    /** The image's description, unless it's only a file name (what browsers show when a picture has no alt text). */
+    private fun describe(n: ScreenNode): String? = n.desc?.let(::clean)?.takeIf { it.isNotEmpty() && !FILE_NAME.matches(it) }
+
+    private val FILE_NAME = Regex("""(?i)(\d+px-)?\S+\.(jpe?g|png|gif|svg|webp|tiff?)|\d+px-\S+|\S*_\S*""")
 
     private fun ScreenNode.anyVisible() = walk().any { it.visible && it.isLeaf } || (isLeaf && visible)
 

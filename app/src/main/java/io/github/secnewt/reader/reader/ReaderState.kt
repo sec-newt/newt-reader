@@ -30,7 +30,7 @@ fun ReaderState.findTarget(label: String): Pair<NodeRef, TapKind>? {
             is Block.ListItem -> if (b.text == label) return b.target to TapKind.FOLLOW
             is Block.Field -> if (b.label == label) return b.target to TapKind.CLOSE_FIRST
             is Block.Heading -> if (b.text == label && b.target != null) return b.target to TapKind.FOLLOW
-            is Block.Image -> Unit
+            is Block.Image -> if (b.target != null && b.description == label) return b.target to TapKind.CLOSE_FIRST
         }
     }
     return null

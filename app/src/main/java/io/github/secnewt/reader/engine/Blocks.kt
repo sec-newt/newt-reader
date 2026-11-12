@@ -45,7 +45,8 @@ sealed interface Block {
         override val text: String get() = label
     }
 
-    data class Image(val description: String?, override val onScreen: Boolean) : Block {
+    /** A picture. [target] is set when it's a link to the full picture (Wikipedia); tapping it closes Reader first. */
+    data class Image(val description: String?, override val onScreen: Boolean, val target: NodeRef? = null) : Block {
         override val text: String get() = description.orEmpty()
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import io.github.secnewt.reader.engine.Block
@@ -46,6 +47,7 @@ class ReaderScreenTest {
             Block.Button(Control("Send", ref, TapKind.CLOSE_FIRST), true),
             Block.Field("Search", ref, false, true),
             Block.Image("A Snellen eye chart", true),
+            Block.Image(null, true, ref),
             Block.Heading("Causes", true, ref),
         ),
     )
@@ -74,6 +76,13 @@ class ReaderScreenTest {
         var tapped: TapKind? = null
         composeRule.setContent { NewtTheme(darkTheme = true) { Screen { _, kind -> tapped = kind } } }
         composeRule.onNodeWithText("Send", substring = true).performClick()
+        assertEquals(TapKind.CLOSE_FIRST, tapped)
+    }
+
+    @Test fun tappingAPictureLinkReportsCloseFirst() {
+        var tapped: TapKind? = null
+        composeRule.setContent { NewtTheme(darkTheme = true) { Screen { _, kind -> tapped = kind } } }
+        composeRule.onNodeWithText("See picture", substring = true).performScrollTo().performClick()
         assertEquals(TapKind.CLOSE_FIRST, tapped)
     }
 }

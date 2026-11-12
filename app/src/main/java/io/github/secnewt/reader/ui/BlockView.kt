@@ -77,10 +77,16 @@ fun BlockView(block: Block, onTap: (NodeRef, TapKind) -> Unit) {
             if (block.password) "✎ Type in: ••• (hidden)" else "✎ Type in: ${block.label}",
             TapKind.CLOSE_FIRST,
         ) { onTap(block.target, TapKind.CLOSE_FIRST) }
-        is Block.Image -> Text(
-            block.description?.let { "🖼 Image: $it" } ?: "🖼 Image",
-            style = readingStyle().copy(fontStyle = FontStyle.Italic),
-        )
+        is Block.Image -> if (block.target != null) {
+            ReaderButton(block.description?.let { "🖼 See picture: $it" } ?: "🖼 See picture", TapKind.CLOSE_FIRST) {
+                onTap(block.target, TapKind.CLOSE_FIRST)
+            }
+        } else {
+            Text(
+                block.description?.let { "🖼 Image: $it" } ?: "🖼 Image",
+                style = readingStyle().copy(fontStyle = FontStyle.Italic),
+            )
+        }
     }
 }
 
