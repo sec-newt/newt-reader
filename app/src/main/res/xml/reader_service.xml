@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Flags match the 2026-10-21 probe that proved reading works on the phone.
+     flagRequestAccessibilityButton = the two-finger swipe up (gesture navigation). -->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/service_description"
+    android:summary="@string/service_summary"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged|typeViewScrolled"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:accessibilityFlags="flagIncludeNotImportantViews|flagReportViewIds|flagRetrieveInteractiveWindows|flagRequestAccessibilityButton"
+    android:canRetrieveWindowContent="true"
+    android:isAccessibilityTool="true"
+    android:notificationTimeout="50" />
