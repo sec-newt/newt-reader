@@ -11,6 +11,8 @@ package io.github.secnewt.reader.engine
 object Stitcher {
     private const val SHORT = 25
     private const val INLINE_LINK_MAX = 200
+    /** What sites put between links in a line ("Privacy • Terms · Contact"); nothing to read at a paragraph's ends. */
+    private const val SEPARATORS = "•·|"
 
     fun stitch(screen: Screen): List<Block> {
         val out = mutableListOf<Block>()
@@ -122,8 +124,8 @@ object Stitcher {
         return merged.mapIndexed { i, s ->
             if (s !is Span.Plain) return@mapIndexed s
             var t = s.text.replace(Regex("[ \\t\\u00A0]+"), " ")
-            if (i == 0) t = t.trimStart()
-            if (i == merged.lastIndex) t = t.trimEnd()
+            if (i == 0) t = t.trimStart { it.isWhitespace() || it in SEPARATORS }
+            if (i == merged.lastIndex) t = t.trimEnd { it.isWhitespace() || it in SEPARATORS }
             Span.Plain(t)
         }.filter { it.text.isNotEmpty() }
     }
@@ -132,8 +134,12 @@ object Stitcher {
     private fun allText(n: ScreenNode, web: Boolean): String =
         clean(n.walk().filter { it.isLeaf }.mapNotNull(::words).map(::nfkc).joinToString(if (web) "" else "\n"))
 
-    /** A leaf's words. A run that is only a space still counts on the web: it's what keeps two links apart. */
-    private fun words(n: ScreenNode): String? = n.text?.takeIf { it.isNotEmpty() && (it.isNotBlank() || it == " ") } ?: n.label
+    /**
+     * A leaf's words. A run that is only a space still counts on the web: it's what keeps two links apart.
+     * A picture inside text says only its description (X draws emoji as pictures), never a file name.
+     */
+    private fun words(n: ScreenNode): String? =
+        if (isImage(n)) describe(n) else n.text?.takeIf { it.isNotEmpty() && (it.isNotBlank() || it == " ") } ?: n.label
 
     private fun fieldLabel(n: ScreenNode): String =
         clean(listOfNotNull(n.hint, n.desc, if (n.password) null else n.text).firstOrNull { it.isNotBlank() } ?: "text field")
@@ -149,10 +155,15 @@ object Stitcher {
         return n.bounds.right - n.bounds.left >= 300 && (h >= 200 || h == 0)
     }
 
-    /** The image's description, unless it's only a file name (what browsers show when a picture has no alt text). */
-    private fun describe(n: ScreenNode): String? = n.label?.let(::clean)?.takeIf { it.isNotEmpty() && !FILE_NAME.matches(it) }
+    /**
+     * The image's description: its text or description, skipping a file name (what browsers show when a
+     * picture has no alt text) and the bare word "Image".
+     */
+    private fun describe(n: ScreenNode): String? = listOf(n.text, n.desc, n.hint)
+        .mapNotNull { it?.let(::clean) }
+        .firstOrNull { it.isNotEmpty() && !FILE_NAME.matches(it) && !it.equals("image", ignoreCase = true) }
 
-    private val FILE_NAME = Regex("""(?i)(\d+px-)?\S+\.(jpe?g|png|gif|svg|webp|tiff?)|\d+px-\S+|\S*_\S*""")
+    private val FILE_NAME = Regex("""(?i)(\d+px-)?\S+\.(jpe?g|png|gif|svg|webp|tiff?)\S*|\d+px-\S+|\S*_\S*|\S+[?&]format=(jpe?g|png|gif|webp)\S*""")
 
     private fun ScreenNode.anyVisible() = walk().any { it.visible && it.isLeaf } || (isLeaf && visible)
 
@@ -176,6 +187,10 @@ object Stitcher {
         b.copy(controls = listOf(Control(label, stamp.target, TapKind.FOLLOW, ActionInfo(Action.READ_REPLIES, count))) + b.controls)
     }
 
+    /**
+     * Three or more buttons in a row fold into one row. A post's actions (reply, like…) never share a row
+     * with what comes before them (its author, time stamp): they're a row of icons of their own.
+     */
     private fun foldControlRows(blocks: List<Block>): List<Block> {
         val out = mutableListOf<Block>()
         var run = mutableListOf<Block.Button>()
@@ -183,7 +198,11 @@ object Stitcher {
             if (run.size >= 3) out += Block.ControlRow(run.map { it.control }, run.any { it.onScreen }) else out += run
             run = mutableListOf()
         }
-        for (b in blocks) if (b is Block.Button) run += b else { flush(); out += b }
+        for (b in blocks) when {
+            b !is Block.Button -> { flush(); out += b }
+            run.isNotEmpty() && (run.last().control.action != null) != (b.control.action != null) -> { flush(); run += b }
+            else -> run += b
+        }
         flush()
         return out
     }
