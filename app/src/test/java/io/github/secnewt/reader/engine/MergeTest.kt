@@ -18,6 +18,15 @@ class MergeTest {
     @Test fun feedWithNoOverlapGoesBeforeTheBottomBar() =
         assertEquals(ps("Top", "post 1", "post 2", "Nav"), Merge.placeNew(ps("Top", "post 1", "Nav"), ps("Top", "post 2", "Nav")))
 
+    @Test fun repeatedShortTextAnchorsAfterWhereTheReadHasGot() = assertEquals(
+        // "2h" is under every post: new posts go before the bottom bar, not into the first post.
+        ps("Top", "Sam", "2h", "post 1", "Kim", "2h", "post 2", "Lee", "post 3", "Nav"),
+        Merge.placeNew(
+            ps("Top", "Sam", "2h", "post 1", "Kim", "2h", "post 2", "Nav"),
+            ps("Top", "Kim", "2h", "post 2", "Lee", "2h", "post 3", "Nav"),
+        ),
+    )
+
     @Test fun nothingKnownAppendsAtTheEnd() =
         assertEquals(ps("a", "b", "c"), Merge.placeNew(ps("a"), ps("b", "c")))
 

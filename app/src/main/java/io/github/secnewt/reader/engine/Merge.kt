@@ -13,10 +13,15 @@ object Merge {
         val known = shown.mapTo(HashSet()) { it.key }
         val added = HashSet<String>()
         val run = mutableListOf<Block>()
+        // How far through [out] the fresh read has matched. Short text repeats ("2h" under every
+        // post), so a known block only anchors at or after this point; an earlier copy is skipped.
+        var cursor = 0
         for (b in fresh) {
             when {
-                b.key in known -> if (run.isNotEmpty()) {
-                    out.addAll(out.indexOfFirst { it.key == b.key }, run)
+                b.key in known -> {
+                    val at = (cursor until out.size).firstOrNull { out[it].key == b.key } ?: continue
+                    out.addAll(at, run)
+                    cursor = at + run.size + 1
                     run.clear()
                 }
                 added.add(b.key) -> run += b
