@@ -131,6 +131,16 @@ class ReaderControllerTest {
         assertEquals(Footer.NONE, c.state.value.footer)
     }
 
+    @Test fun loadedTextLandsMidPage() = runTest {
+        // An email whose body is only shared once the app has scrolled: it belongs under the header.
+        val port = FakePort(page("Mail", "From Sam Example", "Trash"), page("Mail", "From Sam Example", "Weekly garden news", "Trash"))
+        val c = controller(port)
+        c.open(); advanceUntilIdle()
+        c.loadMore(); advanceUntilIdle()
+        assertEquals(listOf("From Sam Example", "Weekly garden news", "Trash"), c.texts())
+        assertEquals(Footer.NONE, c.state.value.footer)
+    }
+
     @Test fun loadMoreFallbackThenEnd() = runTest {
         val port = FakePort(page("Feed", "a"))
         val c = controller(port)

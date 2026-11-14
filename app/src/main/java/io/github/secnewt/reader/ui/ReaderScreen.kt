@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import io.github.secnewt.reader.engine.Block
 import io.github.secnewt.reader.engine.NodeRef
 import io.github.secnewt.reader.engine.TapKind
 import io.github.secnewt.reader.reader.Footer
@@ -114,6 +115,7 @@ fun ReaderScreen(
                     modifier = Modifier.padding(16.dp).semantics { liveRegion = LiveRegionMode.Polite },
                 )
             }
+            val keys = remember(state.blocks) { itemKeys(state.blocks) }
             val density = LocalDensity.current
             // Reader's own text size, on top of the phone's; the top bar above stays normal size.
             CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * textScale)) {
@@ -123,7 +125,8 @@ fun ReaderScreen(
                     contentPadding = PaddingValues(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    items(state.blocks.size) { i -> BlockView(state.blocks[i], onTap) }
+                    // Keys keep the reader's place when a load puts text above it (see Merge.placeNew).
+                    items(state.blocks.size, key = { keys[it] }) { i -> BlockView(state.blocks[i], onTap) }
                     item { FooterView(state.footer, onLoadMore) }
                 }
             }
@@ -196,4 +199,10 @@ private fun Modifier.pinchToScale(current: () -> Float, onScale: (Float) -> Unit
             }
         } while (event.changes.any { it.pressed })
     }
+}
+
+/** A key per block, unique even when a block repeats ("Share" under every post): its key and how many came before. */
+internal fun itemKeys(blocks: List<Block>): List<String> {
+    val counts = HashMap<String, Int>()
+    return blocks.map { b -> val n = counts.merge(b.key, 1, Int::plus)!!; "${b.key}#$n" }
 }
