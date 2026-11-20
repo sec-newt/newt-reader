@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+# CodeRabbit AI review. Tuned to be quiet: real bugs, security, privacy and
+# accessibility, not style nitpicks. Delete this file and remove the repo from
+# the CodeRabbit GitHub App to turn it off.
+language: en-US
+tone_instructions: "Be brief and direct. Skip praise. Only comment when something is wrong or risky."
+
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  collapse_walkthrough: true
+  review_details: false
+  changed_files_summary: false
+  sequence_diagrams: false
+  estimate_code_review_effort: false
+  related_issues: false
+  related_prs: false
+  suggested_labels: false
+  suggested_reviewers: false
+  in_progress_fortune: false
+  poem: false
+
+  auto_review:
+    enabled: true
+    drafts: false
+    ignore_title_keywords: ["WIP", "[skip review]"]
+    ignore_usernames: ["dependabot[bot]"]
+
+  path_filters:
+    - "!**/build/**"
+    - "!gradle/wrapper/**"
+
+  path_instructions:
+    - path: "**/*.kt"
+      instructions: |
+        This is a private, offline reading app for low vision on GrapheneOS. It has no internet permission and keeps no logs. Focus on, in order:
+        1. Privacy: document text, file names and contents must never reach
+           logs or leave the phone. Files opened from other apps are
+           untrusted: flag path traversal, unchecked sizes, and parsing that
+           could crash or hang on a hostile file.
+        2. Correctness: text that loads later must land in the right place,
+           scroll position and reading state must survive rotation, no disk
+           or parsing work on the main thread, coroutine cancellation bugs.
+        3. Accessibility: the primary user has low vision. Flag Compose UI
+           missing contentDescription/semantics, buttons under 56dp or rows
+           under 48dp, text under 16sp, text colors under 7:1 contrast,
+           meaning carried by color alone, duplicate screen-reader labels,
+           and animations that ignore the system "remove animations" setting.
+        Do not comment on naming, formatting, or minor style.
+    - path: "**/AndroidManifest.xml"
+      instructions: |
+        Flag any new permission (especially INTERNET, which is never allowed), exported component, or intent filter,
+        and check it against config/allowed-permissions.txt.
+    - path: ".github/workflows/**"
+      instructions: |
+        Flag unpinned actions (must be pinned to a full commit SHA), widened
+        token permissions, and pull_request_target usage.
+
+chat:
+  auto_reply: true
