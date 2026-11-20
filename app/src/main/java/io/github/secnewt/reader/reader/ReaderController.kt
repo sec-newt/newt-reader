@@ -84,10 +84,11 @@ class ReaderController(
     fun loadMore() = run {
         _state.update { it.copy(footer = Footer.LOADING) }
         val fresh = if (port.scrollForward()) port.read()?.let(::stitched).orEmpty() else emptyList()
-        val added = Merge.appendNew(_state.value.blocks, fresh)
-        if (added.isNotEmpty()) {
+        val shown = _state.value.blocks
+        val merged = Merge.placeNew(shown, fresh)
+        if (merged.size > shown.size) {
             emptyLoads = 0
-            _state.update { it.copy(blocks = it.blocks + added, footer = Footer.NONE) }
+            _state.update { it.copy(blocks = merged, footer = Footer.NONE) }
         } else {
             emptyLoads++
             _state.update { it.copy(footer = if (emptyLoads >= 2) Footer.END else Footer.LOAD_MORE) }
