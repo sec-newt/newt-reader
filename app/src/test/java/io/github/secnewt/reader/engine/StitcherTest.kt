@@ -198,6 +198,32 @@ class StitcherTest {
         assertEquals(TapKind.CLOSE_FIRST, reply.kind)
     }
 
+    @Test fun postHeaderAndActionsAreSeparateRows() {
+        // A post with only a picture: the header's buttons sit right before the action bar.
+        val (time, _, bar) = xPost()
+        val blocks = Stitcher.stitch(web(link("Sam Example"), link("@sam_example"), time, link("More"), bar))
+        val (header, actions) = blocks.map { it as Block.ControlRow }
+        assertEquals(listOf("Sam Example", "@sam_example", "7 hours ago", "More"), header.controls.map { it.label })
+        assertTrue(actions.controls.all { it.action != null })
+        assertEquals("47 replies", actions.controls.first().label)
+        assertEquals(header.controls[2].target, actions.controls.first().target)
+    }
+
+    @Test fun pictureFileNameIsNotPartOfTheText() {
+        // X puts the picture's file name in its text and "Image" in its description.
+        val img = ScreenNode("android.widget.Image", text = "HW4L8p2WIAA1q5j?format=jpg&name=360x360", desc = "Image")
+        val p = Stitcher.stitch(web(ScreenNode("android.view.View", children = listOf(
+            tv("Look at this "), ScreenNode("android.view.View", children = listOf(img)), tv(" garden."),
+        )))).single() as Block.Paragraph
+        assertEquals("Look at this garden.", p.text)
+    }
+
+    @Test fun separatorAtTheEndOfALineIsDropped() {
+        // Footer links: "Privacy policy •", "Contact •", each its own line.
+        val p = Stitcher.stitch(web(ScreenNode("android.view.View", children = listOf(link("Privacy policy"), tv("•"))))).single()
+        assertEquals("Privacy policy", p.text)
+    }
+
     @Test fun clickableHeadingIsATappableHeading() {
         val toggle = ScreenNode("android.view.View", clickable = true, children = listOf(
             ScreenNode("android.widget.TextView", text = "Classification", heading = true), ScreenNode("android.view.View")))
