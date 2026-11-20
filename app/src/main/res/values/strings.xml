@@ -1,3 +1,6 @@
 <resources>
     <string name="app_name">Newt Reader</string>
+    <string name="service_summary">Redraws any screen as large, readable text. Swipe up with two fingers to read.</string>
+    <string name="service_description">Reads the screen when you ask, to redraw it larger. Taps only what you tap. Nothing it reads is saved or sent anywhere, and Newt Reader has no internet access.</string>
+    <string name="tile_label">Read screen</string>
 </resources>

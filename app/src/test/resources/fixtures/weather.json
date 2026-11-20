@@ -1,0 +1,264 @@
+{
+ "label": "weather",
+ "time": 1792593694721,
+ "activePackage": "io.github.secnewt.weather",
+ "windows": [
+  {
+   "title": "Newt Weather",
+   "type": 1,
+   "active": true,
+   "focused": true,
+   "layer": 0,
+   "bounds": "0 0 1080 2400",
+   "root": {
+    "cls": "android.widget.FrameLayout",
+    "b": "0 0 1080 2400",
+    "acts": [
+     "4",
+     "8",
+     "64",
+     "16908342"
+    ],
+    "kids": [
+     {
+      "cls": "android.widget.LinearLayout",
+      "b": "0 0 1080 2400",
+      "acts": [
+       "4",
+       "8",
+       "64",
+       "16908342"
+      ],
+      "kids": [
+       {
+        "cls": "android.widget.FrameLayout",
+        "id": "android:id/content",
+        "b": "0 0 1080 2400",
+        "acts": [
+         "4",
+         "8",
+         "64",
+         "16908342"
+        ],
+        "kids": [
+         {
+          "cls": "androidx.compose.ui.platform.ComposeView",
+          "b": "0 0 1080 2400",
+          "acts": [
+           "4",
+           "8",
+           "64",
+           "16908342"
+          ],
+          "kids": [
+           {
+            "cls": "android.view.View",
+            "b": "0 0 1080 2400",
+            "acts": [
+             "64"
+            ],
+            "kids": [
+             {
+              "cls": "android.view.View",
+              "b": "0 0 1080 2400",
+              "acts": [
+               "64"
+              ],
+              "kids": [
+               {
+                "cls": "android.view.View",
+                "scroll": true,
+                "b": "0 136 1080 2337",
+                "acts": [
+                 "16908346",
+                 "64",
+                 "4096"
+                ],
+                "kids": [
+                 {
+                  "cls": "android.widget.Button",
+                  "text": "Springfield",
+                  "click": true,
+                  "heading": true,
+                  "b": "42 178 1038 325",
+                  "acts": [
+                   "1",
+                   "256",
+                   "512",
+                   "64",
+                   "16:Change ZIP",
+                   "131072"
+                  ]
+                 },
+                 {
+                  "cls": "android.view.View",
+                  "desc": "Now 63 degrees, sunny. High 81.",
+                  "b": "42 367 1038 828",
+                  "acts": [
+                   "256",
+                   "512",
+                   "64",
+                   "131072"
+                  ]
+                 },
+                 {
+                  "cls": "android.view.View",
+                  "click": true,
+                  "b": "42 870 1038 1133",
+                  "acts": [
+                   "1",
+                   "64",
+                   "16:Show details"
+                  ],
+                  "kids": [
+                   {
+                    "cls": "android.widget.TextView",
+                    "text": "Air Quality Alert",
+                    "heading": true,
+                    "b": "84 912 609 1000",
+                    "acts": [
+                     "256",
+                     "512",
+                     "64",
+                     "131072"
+                    ]
+                   },
+                   {
+                    "cls": "android.widget.TextView",
+                    "text": "Tap for details",
+                    "b": "84 1016 445 1091",
+                    "acts": [
+                     "256",
+                     "512",
+                     "64",
+                     "131072"
+                    ]
+                   },
+                   {
+                    "cls": "android.widget.Button",
+                    "b": "42 870 1038 1133",
+                    "acts": [
+                     "64"
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "cls": "android.widget.TextView",
+                  "text": "Next 7 days",
+                  "heading": true,
+                  "b": "42 1175 422 1264",
+                  "acts": [
+                   "256",
+                   "512",
+                   "64",
+                   "131072"
+                  ]
+                 },
+                 {
+                  "cls": "android.view.View",
+                  "click": true,
+                  "b": "42 1306 1038 1628",
+                  "acts": [
+                   "1",
+                   "64",
+                   "16:Show details"
+                  ],
+                  "kids": [
+                   {
+                    "cls": "android.view.View",
+                    "desc": "Today: sunny. High 81. Low 58. 1 percent chance of rain.",
+                    "b": "84 1348 996 1586",
+                    "acts": [
+                     "256",
+                     "512",
+                     "64",
+                     "131072"
+                    ]
+                   },
+                   {
+                    "cls": "android.widget.Button",
+                    "b": "42 1306 1038 1628",
+                    "acts": [
+                     "64"
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "cls": "android.view.View",
+                  "click": true,
+                  "b": "42 1670 1038 1992",
+                  "acts": [
+                   "1",
+                   "64",
+                   "16:Show details"
+                  ],
+                  "kids": [
+                   {
+                    "cls": "android.view.View",
+                    "desc": "Thursday: sunny. High 83. Low 59. 1 percent chance of rain.",
+                    "b": "84 1712 996 1950",
+                    "acts": [
+                     "256",
+                     "512",
+                     "64",
+                     "131072"
+                    ]
+                   },
+                   {
+                    "cls": "android.widget.Button",
+                    "b": "42 1670 1038 1992",
+                    "acts": [
+                     "64"
+                    ]
+                   }
+                  ]
+                 },
+                 {
+                  "cls": "android.view.View",
+                  "click": true,
+                  "b": "42 2034 1038 2296",
+                  "acts": [
+                   "1",
+                   "64",
+                   "16:Show details"
+                  ],
+                  "kids": [
+                   {
+                    "cls": "android.view.View",
+                    "desc": "Friday: mostly sunny. High 83. Low 60.",
+                    "b": "84 2076 996 2254",
+                    "acts": [
+                     "256",
+                     "512",
+                     "64",
+                     "131072"
+                    ]
+                   },
+                   {
+                    "cls": "android.widget.Button",
+                    "b": "42 2034 1038 2296",
+                    "acts": [
+                     "64"
+                    ]
+                   }
+                  ]
+                 }
+                ]
+               }
+              ]
+             }
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ ]
+}
