@@ -115,7 +115,13 @@ class ReadAloud(
         if (e !== engine) return  // shut down while connecting
         if (result != SpeechPort.Ready.YES) {
             shutdown()
-            _state.value = ListenState(message = if (result == SpeechPort.Ready.ONLINE_ONLY) ONLINE_VOICE else NO_ENGINE)
+            _state.value = ListenState(
+                message = when (result) {
+                    SpeechPort.Ready.ONLINE_ONLY -> ONLINE_VOICE
+                    SpeechPort.Ready.UNKNOWN_VOICE -> UNKNOWN_VOICE
+                    else -> NO_ENGINE
+                },
+            )
             return
         }
         ready = true
@@ -219,6 +225,7 @@ class ReadAloud(
         const val NOTHING_TO_READ = "There's no text to read here"
         const val NO_ENGINE = "No text-to-speech engine is ready. Pick one in Speech settings."
         const val ENGINE_FAILED = "The speech engine stopped working"
+        const val UNKNOWN_VOICE = "Your speech engine won't say whether its voice works offline, so Reader won't use it. Pick another engine in Speech settings."
         const val ONLINE_VOICE = "Your speech voice needs the internet. Pick a voice that works offline in Speech settings."
         private const val DEFAULT_MAX = 4000
     }

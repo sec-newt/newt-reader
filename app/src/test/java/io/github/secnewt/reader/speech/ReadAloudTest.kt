@@ -282,4 +282,12 @@ class ReadAloudTest {
         assertEquals(1, r.wantedMore)
         assertEquals(Playback.IDLE, r.player.state.value.playback)
     }
+
+    @Test fun anEngineThatHidesItsVoiceIsRefused() = runTest {
+        val r = rig(p("A."), speech = FakeSpeech(SpeechPort.Ready.UNKNOWN_VOICE))
+        r.startAndConnect()
+        assertEquals(Playback.IDLE, r.player.state.value.playback)
+        assertEquals(ReadAloud.UNKNOWN_VOICE, r.player.state.value.message)
+        assertTrue(r.speech.texts.isEmpty())
+    }
 }

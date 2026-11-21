@@ -44,6 +44,7 @@ Pause stops the engine (Android's TTS has no real pause); Resume restarts the se
 - The engine connects only when Listen is first tapped, and disconnects when Reader closes.
 - Only voices that work offline are used. If the chosen voice needs the internet, Reader switches to an
   offline voice in the same language; if there is none, it doesn't speak and says why.
+  If the engine won't say which voice it uses, Reader treats it as unsafe and doesn't speak (fails closed).
 - Nothing spoken is stored.
 
 ## Shape

@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
+import java.util.Locale
 
 /**
  * [SpeechPort] on Android's text-to-speech: the engine, voice and speed the owner picked in the
@@ -26,7 +27,7 @@ class AndroidSpeech(private val context: Context) : SpeechPort {
                 if (status != TextToSpeech.SUCCESS || t == null) return@post onReady(SpeechPort.Ready.NO_ENGINE)
                 // Page text must never leave the phone: refuse a voice that synthesizes online,
                 // switching to an offline voice in the same language when the engine has one.
-                if (!offlineVoice(t)) return@post onReady(SpeechPort.Ready.ONLINE_ONLY)
+                offlineVoice(t)?.let { return@post onReady(it) }
                 t.setAudioAttributes(
                     AudioAttributes.Builder()
                         .setUsage(AudioAttributes.USAGE_MEDIA)
@@ -39,15 +40,22 @@ class AndroidSpeech(private val context: Context) : SpeechPort {
         }
     }
 
-    /** True if [t] now speaks with a voice that needs no internet. */
-    private fun offlineVoice(t: TextToSpeech): Boolean {
-        val current = t.voice ?: t.defaultVoice ?: return true  // engine doesn't report voices: nothing to check
-        if (!current.isNetworkConnectionRequired) return true
+    /**
+     * Makes [t] speak with a voice that needs no internet. Null when it does; otherwise why it can't.
+     * Fails closed: if the engine won't say which voice it uses, Reader can't promise the text stays on the phone.
+     */
+    private fun offlineVoice(t: TextToSpeech): SpeechPort.Ready? {
+        val current = t.voice ?: t.defaultVoice
+        if (current != null && !current.isNetworkConnectionRequired) return null
+        val locale = current?.locale ?: Locale.getDefault()
         val offline = t.voices.orEmpty()
-            .filter { !it.isNetworkConnectionRequired && it.locale.language == current.locale.language }
-            .minByOrNull { if (it.locale == current.locale) 0 else 1 }
-            ?: return false
-        return t.setVoice(offline) == TextToSpeech.SUCCESS
+            .filter { !it.isNetworkConnectionRequired && it.locale.language == locale.language }
+            .minByOrNull { if (it.locale == locale) 0 else 1 }
+        return when {
+            offline != null && t.setVoice(offline) == TextToSpeech.SUCCESS -> null
+            current == null -> SpeechPort.Ready.UNKNOWN_VOICE
+            else -> SpeechPort.Ready.ONLINE_ONLY
+        }
     }
 
     override fun speak(id: String, text: String, flush: Boolean) {
