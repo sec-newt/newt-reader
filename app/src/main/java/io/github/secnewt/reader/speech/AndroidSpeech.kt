@@ -45,8 +45,11 @@ class AndroidSpeech(private val context: Context) : SpeechPort {
      * Fails closed: if the engine won't say which voice it uses, Reader can't promise the text stays on the phone.
      */
     private fun offlineVoice(t: TextToSpeech): SpeechPort.Ready? {
-        val current = t.voice ?: t.defaultVoice
-        if (current != null && !current.isNetworkConnectionRequired) return null
+        val active = t.voice
+        if (active != null && !active.isNetworkConnectionRequired) return null
+        // No active voice reported: the default isn't guaranteed to be in use, so select it explicitly.
+        val current = active ?: t.defaultVoice
+        if (active == null && current != null && !current.isNetworkConnectionRequired && t.setVoice(current) == TextToSpeech.SUCCESS) return null
         val locale = current?.locale ?: Locale.getDefault()
         // Offline voices in the same language, exact locale first; the first one the engine accepts wins.
         val switched = t.voices.orEmpty()
