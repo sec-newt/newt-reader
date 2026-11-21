@@ -3,6 +3,13 @@
 
     <!-- No permissions, and no internet access. The accessibility service and tile are bound by the system; they need no <uses-permission>. -->
 
+    <!-- Read aloud: lets Reader see the text-to-speech engines installed on the phone (needed since Android 11). Not a permission. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"

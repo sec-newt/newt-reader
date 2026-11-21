@@ -7,6 +7,8 @@ import android.view.accessibility.AccessibilityWindowInfo
 import io.github.secnewt.reader.reader.ReaderController
 import io.github.secnewt.reader.reader.ReaderPrefs
 import io.github.secnewt.reader.reader.ServicePort
+import io.github.secnewt.reader.speech.AndroidSpeech
+import io.github.secnewt.reader.speech.ReadAloud
 import io.github.secnewt.reader.ui.ReaderRoute
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
@@ -27,6 +29,7 @@ class ReaderService : AccessibilityService() {
     private lateinit var overlay: OverlayHost
     private lateinit var bubble: FloatingButton
     private lateinit var controller: ReaderController
+    private lateinit var readAloud: ReadAloud
 
     override fun onServiceConnected() {
         prefs = ReaderPrefs(this)
@@ -36,6 +39,8 @@ class ReaderService : AccessibilityService() {
             overlay.withoutFocus { performGlobalAction(GLOBAL_ACTION_BACK); delay(100) }
         }
         controller = ReaderController(port, scope, onClosed = { listening = false })
+        // The speech engine connects on the first Listen and disconnects when Reader closes.
+        readAloud = ReadAloud({ AndroidSpeech(this) }, controller.state, scope, wantMore = controller::nearEnd)
         accessibilityButtonController.registerAccessibilityButtonCallback(
             object : AccessibilityButtonController.AccessibilityButtonCallback() {
                 override fun onClicked(controller: AccessibilityButtonController) = toggle()
@@ -63,7 +68,7 @@ class ReaderService : AccessibilityService() {
     }
 
     private fun render(open: Boolean) {
-        if (open) overlay.show(onBack = controller::back) { ReaderRoute(controller, prefs) } else overlay.hide()
+        if (open) overlay.show(onBack = controller::back) { ReaderRoute(controller, prefs, readAloud) } else overlay.hide()
         refreshBubble()
     }
 
@@ -87,6 +92,7 @@ class ReaderService : AccessibilityService() {
         running = null
         if (::prefs.isInitialized) {
             prefs.unwatch()
+            readAloud.shutdown()
             overlay.hide()
             bubble.hide()
         }
