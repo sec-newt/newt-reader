@@ -21,14 +21,15 @@ data class ListenState(
 /**
  * Read aloud: speaks Reader's blocks one at a time through [newEngine]'s engine. The engine connects
  * on the first Listen and disconnects when Reader closes. It stops by itself when the block it's
- * reading disappears (a new page). At the end it calls [wantMore] once, and keeps going if more loads.
+ * reading disappears (a new page). At the end it calls [wantMore] once, and keeps going if more loads;
+ * [wantMore] returns false if no load started, and then it finishes.
  * Call everything on the main thread.
  */
 class ReadAloud(
     private val newEngine: () -> SpeechPort,
     private val reader: StateFlow<ReaderState>,
     scope: CoroutineScope,
-    private val wantMore: () -> Unit = {},
+    private val wantMore: () -> Boolean = { false },
 ) {
     private val _state = MutableStateFlow(ListenState())
     val state: StateFlow<ListenState> = _state.asStateFlow()
@@ -61,6 +62,7 @@ class ReadAloud(
             return
         }
         silence()
+        block = blocks[index]  // tracked while the engine connects, so text loading above it can't shift it
         _state.value = ListenState(Playback.STARTING, current = index)
         val e = engine
         if (e != null && ready) return play(index)
@@ -81,7 +83,8 @@ class ReadAloud(
     fun resume() {
         if (_state.value.playback != Playback.PAUSED) return
         _state.value = _state.value.copy(playback = Playback.PLAYING)
-        speakFrom(piece)
+        // Paused after the block's last sentence (waiting for more): move on rather than speak nothing.
+        if (piece >= pieces.size) advance() else speakFrom(piece)
     }
 
     fun next() {
@@ -108,11 +111,11 @@ class ReadAloud(
         ready = false
     }
 
-    private fun onConnected(e: SpeechPort, ok: Boolean) {
+    private fun onConnected(e: SpeechPort, result: SpeechPort.Ready) {
         if (e !== engine) return  // shut down while connecting
-        if (!ok) {
+        if (result != SpeechPort.Ready.YES) {
             shutdown()
-            _state.value = ListenState(message = NO_ENGINE)
+            _state.value = ListenState(message = if (result == SpeechPort.Ready.ONLINE_ONLY) ONLINE_VOICE else NO_ENGINE)
             return
         }
         ready = true
@@ -168,7 +171,7 @@ class ReadAloud(
             Footer.NONE -> if (askedForMore) finish() else {
                 askedForMore = true
                 waitingForMore = true
-                wantMore()
+                if (!wantMore()) finish()
             }
             Footer.LOAD_MORE, Footer.END -> finish()
         }
@@ -216,6 +219,7 @@ class ReadAloud(
         const val NOTHING_TO_READ = "There's no text to read here"
         const val NO_ENGINE = "No text-to-speech engine is ready. Pick one in Speech settings."
         const val ENGINE_FAILED = "The speech engine stopped working"
+        const val ONLINE_VOICE = "Your speech voice needs the internet. Pick a voice that works offline in Speech settings."
         private const val DEFAULT_MAX = 4000
     }
 }

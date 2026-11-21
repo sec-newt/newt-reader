@@ -21,17 +21,17 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** A pretend speech engine: records what it was asked to say; the test says when each piece finishes. */
-class FakeSpeech(private val works: Boolean = true, override val maxInput: Int = 4000) : SpeechPort {
+class FakeSpeech(private val ready: SpeechPort.Ready = SpeechPort.Ready.YES, override val maxInput: Int = 4000) : SpeechPort {
     override var listener: SpeechPort.Listener? = null
     val said = mutableListOf<Pair<String, String>>()  // id to text, in order
     var flushes = 0
     var stops = 0
     var shutdowns = 0
     var started = 0
-    private var onReady: ((Boolean) -> Unit)? = null
+    private var onReady: ((SpeechPort.Ready) -> Unit)? = null
 
-    override fun start(onReady: (Boolean) -> Unit) { started++; this.onReady = onReady }
-    fun connect() = onReady!!(works)
+    override fun start(onReady: (SpeechPort.Ready) -> Unit) { started++; this.onReady = onReady }
+    fun connect() = onReady!!(ready)
     override fun speak(id: String, text: String, flush: Boolean) { if (flush) flushes++; said += id to text }
     override fun stop() { stops++ }
     override fun shutdown() { shutdowns++ }
@@ -49,10 +49,10 @@ class ReadAloudTest {
 
     private class Rig(val reader: MutableStateFlow<ReaderState>, val speech: FakeSpeech, val player: ReadAloud, var wantedMore: Int = 0)
 
-    private fun TestScope.rig(vararg blocks: Block, speech: FakeSpeech = FakeSpeech()): Rig {
+    private fun TestScope.rig(vararg blocks: Block, speech: FakeSpeech = FakeSpeech(), loadStarts: Boolean = true): Rig {
         val reader = MutableStateFlow(ReaderState(open = true, blocks = blocks.toList()))
         lateinit var r: Rig
-        val player = ReadAloud({ speech }, reader, backgroundScope, wantMore = { r.wantedMore++ })
+        val player = ReadAloud({ speech }, reader, backgroundScope, wantMore = { r.wantedMore++; loadStarts })
         r = Rig(reader, speech, player)
         runCurrent()
         return r
@@ -167,7 +167,7 @@ class ReadAloudTest {
     }
 
     @Test fun noEngineSaysSoAndLetsGo() = runTest {
-        val r = rig(p("A."), speech = FakeSpeech(works = false))
+        val r = rig(p("A."), speech = FakeSpeech(SpeechPort.Ready.NO_ENGINE))
         r.startAndConnect()
         assertEquals(Playback.IDLE, r.player.state.value.playback)
         assertEquals(ReadAloud.NO_ENGINE, r.player.state.value.message)
@@ -233,5 +233,53 @@ class ReadAloudTest {
         r.startAndConnect()
         assertNull(r.player.state.value.message)
         assertFalse(r.speech.texts.isEmpty())
+    }
+
+    @Test fun anOnlineOnlyVoiceIsRefused() = runTest {
+        val r = rig(p("A."), speech = FakeSpeech(SpeechPort.Ready.ONLINE_ONLY))
+        r.startAndConnect()
+        assertEquals(Playback.IDLE, r.player.state.value.playback)
+        assertEquals(ReadAloud.ONLINE_VOICE, r.player.state.value.message)
+        assertTrue(r.speech.texts.isEmpty())
+    }
+
+    @Test fun textLoadingAboveWhileConnectingKeepsTheChosenBlock() = runTest {
+        val r = rig(p("A."), p("B."))
+        r.player.start(1)
+        r.reader.update { it.copy(blocks = listOf(p("New."), p("A."), p("B."))) }
+        runCurrent()
+        r.speech.connect()
+        assertEquals(listOf("B."), r.speech.texts)
+        assertEquals(2, r.player.state.value.current)
+    }
+
+    @Test fun aNewPageWhileConnectingCancels() = runTest {
+        val r = rig(p("A."))
+        r.player.start(0)
+        r.reader.update { it.copy(blocks = listOf(p("Other page."))) }
+        runCurrent()
+        r.speech.connect()
+        assertEquals(Playback.IDLE, r.player.state.value.playback)
+        assertTrue(r.speech.texts.isEmpty())
+    }
+
+    @Test fun resumeWhileWaitingForMoreMovesOn() = runTest {
+        val r = rig(p("One."))
+        r.startAndConnect()
+        r.speech.finishLast()  // end of the page: asked for more
+        r.player.pause()
+        r.reader.update { it.copy(blocks = it.blocks + p("Two.")) }
+        runCurrent()
+        r.player.resume()
+        assertEquals(listOf("One.", "Two."), r.speech.texts)
+        assertEquals(Playback.PLAYING, r.player.state.value.playback)
+    }
+
+    @Test fun ifNoLoadStartsItFinishes() = runTest {
+        val r = rig(p("One."), loadStarts = false)
+        r.startAndConnect()
+        r.speech.finishLast()
+        assertEquals(1, r.wantedMore)
+        assertEquals(Playback.IDLE, r.player.state.value.playback)
     }
 }

@@ -42,6 +42,8 @@ Pause stops the engine (Android's TTS has no real pause); Resume restarts the se
 
 - No internet, no new permissions. The engine is the one the owner chose in Android settings.
 - The engine connects only when Listen is first tapped, and disconnects when Reader closes.
+- Only voices that work offline are used. If the chosen voice needs the internet, Reader switches to an
+  offline voice in the same language; if there is none, it doesn't speak and says why.
 - Nothing spoken is stored.
 
 ## Shape

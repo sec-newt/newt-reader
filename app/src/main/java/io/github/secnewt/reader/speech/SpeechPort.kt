@@ -12,8 +12,10 @@ interface SpeechPort {
     /** The longest text one [speak] call accepts. */
     val maxInput: Int
 
-    /** Connects to the engine; [onReady] gets true once it can speak, false if there's none. */
-    fun start(onReady: (Boolean) -> Unit)
+    enum class Ready { YES, NO_ENGINE, ONLINE_ONLY }
+
+    /** Connects to the engine; [onReady] says whether it can speak, using only a voice that stays on the phone. */
+    fun start(onReady: (Ready) -> Unit)
 
     /** Says [text]. [flush] drops anything still queued first; otherwise it's queued after it. */
     fun speak(id: String, text: String, flush: Boolean)

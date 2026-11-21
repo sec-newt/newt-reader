@@ -19,23 +19,35 @@ class AndroidSpeech(private val context: Context) : SpeechPort {
 
     override val maxInput: Int get() = TextToSpeech.getMaxSpeechInputLength()
 
-    override fun start(onReady: (Boolean) -> Unit) {
+    override fun start(onReady: (SpeechPort.Ready) -> Unit) {
         tts = TextToSpeech(context) { status ->
             main.post {
                 val t = tts
-                val ok = status == TextToSpeech.SUCCESS && t != null
-                if (ok) {
-                    t.setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_MEDIA)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                            .build(),
-                    )
-                    t.setOnUtteranceProgressListener(Progress())
-                }
-                onReady(ok)
+                if (status != TextToSpeech.SUCCESS || t == null) return@post onReady(SpeechPort.Ready.NO_ENGINE)
+                // Page text must never leave the phone: refuse a voice that synthesizes online,
+                // switching to an offline voice in the same language when the engine has one.
+                if (!offlineVoice(t)) return@post onReady(SpeechPort.Ready.ONLINE_ONLY)
+                t.setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build(),
+                )
+                t.setOnUtteranceProgressListener(Progress())
+                onReady(SpeechPort.Ready.YES)
             }
         }
+    }
+
+    /** True if [t] now speaks with a voice that needs no internet. */
+    private fun offlineVoice(t: TextToSpeech): Boolean {
+        val current = t.voice ?: t.defaultVoice ?: return true  // engine doesn't report voices: nothing to check
+        if (!current.isNetworkConnectionRequired) return true
+        val offline = t.voices.orEmpty()
+            .filter { !it.isNetworkConnectionRequired && it.locale.language == current.locale.language }
+            .minByOrNull { if (it.locale == current.locale) 0 else 1 }
+            ?: return false
+        return t.setVoice(offline) == TextToSpeech.SUCCESS
     }
 
     override fun speak(id: String, text: String, flush: Boolean) {

@@ -94,7 +94,7 @@ fun ReaderRoute(controller: ReaderController, prefs: ReaderPrefs, readAloud: Rea
             onTextScale = { scale = it; prefs.textScale = it },
             onTap = controller::tap,
             onClose = controller::close,
-            onNearEnd = controller::nearEnd,
+            onNearEnd = { controller.nearEnd() },
             onLoadMore = controller::loadMore,
             onJumpDone = controller::jumpDone,
             listen = listen,
@@ -281,13 +281,13 @@ private fun ListenButton(starting: Boolean, onClick: () -> Unit, modifier: Modif
 /** Back, Pause or Resume, Next, Stop. Two rows when the phone's text is large. */
 @Composable
 private fun PlayerBar(paused: Boolean, actions: ListenActions) {
-    val back = @Composable { m: Modifier -> PlayerButton(Icons.Filled.SkipPrevious, "Back", "Read the block before", m, actions.back) }
+    val back = @Composable { m: Modifier -> PlayerButton(Icons.Filled.SkipPrevious, "Back", "Back: read the block before", m, actions.back) }
     val toggle = @Composable { m: Modifier ->
         if (paused) PlayerButton(Icons.Filled.PlayArrow, "Resume", null, m, actions.resume)
         else PlayerButton(Icons.Filled.Pause, "Pause", null, m, actions.pause)
     }
-    val next = @Composable { m: Modifier -> PlayerButton(Icons.Filled.SkipNext, "Next", "Skip to the next block", m, actions.next) }
-    val stop = @Composable { m: Modifier -> PlayerButton(Icons.Filled.Stop, "Stop", "Stop reading aloud", m, actions.stop) }
+    val next = @Composable { m: Modifier -> PlayerButton(Icons.Filled.SkipNext, "Next", "Next: skip to the next block", m, actions.next) }
+    val stop = @Composable { m: Modifier -> PlayerButton(Icons.Filled.Stop, "Stop", "Stop: stop reading aloud", m, actions.stop) }
     val padding = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
     val gap = Arrangement.spacedBy(8.dp)
     if (LocalDensity.current.fontScale >= 1.5f) {
