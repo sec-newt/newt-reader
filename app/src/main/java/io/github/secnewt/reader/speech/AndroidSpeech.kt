@@ -48,11 +48,13 @@ class AndroidSpeech(private val context: Context) : SpeechPort {
         val current = t.voice ?: t.defaultVoice
         if (current != null && !current.isNetworkConnectionRequired) return null
         val locale = current?.locale ?: Locale.getDefault()
-        val offline = t.voices.orEmpty()
+        // Offline voices in the same language, exact locale first; the first one the engine accepts wins.
+        val switched = t.voices.orEmpty()
             .filter { !it.isNetworkConnectionRequired && it.locale.language == locale.language }
-            .minByOrNull { if (it.locale == locale) 0 else 1 }
+            .sortedBy { if (it.locale == locale) 0 else 1 }
+            .any { t.setVoice(it) == TextToSpeech.SUCCESS }
         return when {
-            offline != null && t.setVoice(offline) == TextToSpeech.SUCCESS -> null
+            switched -> null
             current == null -> SpeechPort.Ready.UNKNOWN_VOICE
             else -> SpeechPort.Ready.ONLINE_ONLY
         }
