@@ -75,10 +75,12 @@ class ReaderController(
         }
     }
 
-    /** The reading view scrolled near its end: load more, unless a load or the fallback button is already showing. */
-    fun nearEnd() {
+    /** The reading view scrolled near its end: load more, unless a load or the fallback button is already showing. True if a load started. */
+    fun nearEnd(): Boolean {
         val s = _state.value
-        if (s.open && !s.busy && s.footer == Footer.NONE) loadMore()
+        if (!s.open || s.busy || s.footer != Footer.NONE) return false
+        loadMore()
+        return true
     }
 
     fun loadMore() = run {

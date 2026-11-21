@@ -2,6 +2,7 @@ package io.github.secnewt.reader.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToNodeAction
 import androidx.compose.ui.test.hasText
@@ -22,9 +23,12 @@ import io.github.secnewt.reader.engine.Span
 import io.github.secnewt.reader.engine.TapKind
 import io.github.secnewt.reader.reader.Footer
 import io.github.secnewt.reader.reader.ReaderState
+import io.github.secnewt.reader.speech.ListenState
+import io.github.secnewt.reader.speech.Playback
 import io.github.secnewt.test.newtScreenshot
 import io.github.secnewt.ui.NewtTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -66,8 +70,14 @@ class ReaderScreenTest {
         ),
     )
 
-    @Composable private fun Screen(state: ReaderState = sample, onTap: (NodeRef, TapKind) -> Unit = { _, _ -> }) =
-        ReaderScreen(state, 1.5f, {}, onTap, {}, {}, {}, {})
+    @Composable private fun Screen(
+        state: ReaderState = sample,
+        listen: ListenState = ListenState(),
+        actions: ListenActions = ListenActions(),
+        onTap: (NodeRef, TapKind) -> Unit = { _, _ -> },
+    ) = ReaderScreen(state, 1.5f, {}, onTap, {}, {}, {}, {}, listen, actions)
+
+    private val playing = ListenState(Playback.PLAYING, current = 1)
 
     @Test fun dark() {
         composeRule.newtScreenshot("reader-dark", dark = true) { Screen() }
@@ -88,14 +98,14 @@ class ReaderScreenTest {
 
     @Test fun tappingSendReportsCloseFirst() {
         var tapped: TapKind? = null
-        composeRule.setContent { NewtTheme(darkTheme = true) { Screen { _, kind -> tapped = kind } } }
+        composeRule.setContent { NewtTheme(darkTheme = true) { Screen(onTap = { _, kind -> tapped = kind }) } }
         composeRule.onNodeWithText("Send", substring = true).performClick()
         assertEquals(TapKind.CLOSE_FIRST, tapped)
     }
 
     @Test fun tappingAPictureLinkReportsCloseFirst() {
         var tapped: TapKind? = null
-        composeRule.setContent { NewtTheme(darkTheme = true) { Screen { _, kind -> tapped = kind } } }
+        composeRule.setContent { NewtTheme(darkTheme = true) { Screen(onTap = { _, kind -> tapped = kind }) } }
         composeRule.onNode(hasScrollToNodeAction()).performScrollToNode(hasText("See picture", substring = true))
         composeRule.onNodeWithText("See picture", substring = true).performClick()
         assertEquals(TapKind.CLOSE_FIRST, tapped)
@@ -103,10 +113,72 @@ class ReaderScreenTest {
 
     @Test fun likeStaysInReaderAndScreenReadersHearTheFullLabel() {
         var tapped: TapKind? = null
-        composeRule.setContent { NewtTheme(darkTheme = true) { Screen { _, kind -> tapped = kind } } }
+        composeRule.setContent { NewtTheme(darkTheme = true) { Screen(onTap = { _, kind -> tapped = kind }) } }
         composeRule.onNode(hasScrollToNodeAction()).performScrollToNode(hasContentDescription("4473 Likes. Liked"))
         composeRule.onNodeWithContentDescription("4473 Likes. Liked").performClick()
         assertEquals(TapKind.FOLLOW, tapped)
         composeRule.onNodeWithContentDescription("58 Replies. Reply, leaves Reader").assertExists()
+    }
+
+    @Test fun listening() {
+        composeRule.newtScreenshot("reader-listening", dark = true) { Screen(listen = playing) }
+        composeRule.onNodeWithText("Pause").assertIsDisplayed()
+        composeRule.onNodeWithText("Listen").assertDoesNotExist()
+    }
+
+    @Test fun listeningLight() = composeRule.newtScreenshot("reader-listening-light", dark = false) { Screen(listen = playing) }
+
+    @Test fun listeningLargeText() = composeRule.newtScreenshot("reader-listening-200pct", dark = true, fontScale = 2f) {
+        Screen(listen = ListenState(Playback.PAUSED, current = 1))
+    }
+
+    @Test fun listenStartsAtTheFirstBlockOnScreen() {
+        var from: Int? = null
+        composeRule.setContent { NewtTheme(darkTheme = true) { Screen(actions = ListenActions(start = { from = it })) } }
+        composeRule.onNodeWithText("Listen").performClick()
+        assertEquals(0, from)
+    }
+
+    @Test fun playerButtonsDoWhatTheySay() {
+        val pressed = mutableListOf<String>()
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) {
+                Screen(
+                    listen = playing,
+                    actions = ListenActions(
+                        pause = { pressed += "pause" }, next = { pressed += "next" },
+                        back = { pressed += "back" }, stop = { pressed += "stop" },
+                    ),
+                )
+            }
+        }
+        composeRule.onNodeWithText("Back").performClick()
+        composeRule.onNodeWithText("Pause").performClick()
+        composeRule.onNodeWithText("Next").performClick()
+        composeRule.onNodeWithText("Stop").performClick()
+        assertEquals(listOf("back", "pause", "next", "stop"), pressed)
+    }
+
+    @Test fun pausedShowsResume() {
+        var resumed = false
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) { Screen(listen = ListenState(Playback.PAUSED, current = 1), actions = ListenActions(resume = { resumed = true })) }
+        }
+        composeRule.onNodeWithText("Resume").performClick()
+        assertTrue(resumed)
+    }
+
+    @Test fun startingDisablesListenAndAMessageShows() {
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) { Screen(listen = ListenState(Playback.STARTING, current = 0)) }
+        }
+        composeRule.onNodeWithText("Starting…").assertIsNotEnabled()
+    }
+
+    @Test fun readAloudProblemsAreShown() {
+        composeRule.setContent {
+            NewtTheme(darkTheme = true) { Screen(listen = ListenState(message = "No text-to-speech engine is ready. Pick one in Speech settings.")) }
+        }
+        composeRule.onNodeWithText("No text-to-speech engine", substring = true).assertIsDisplayed()
     }
 }

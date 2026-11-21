@@ -1,6 +1,28 @@
 package io.github.secnewt.reader.ui
 
 import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.SkipNext
+import androidx.compose.material.icons.filled.SkipPrevious
+import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -50,6 +72,9 @@ import io.github.secnewt.reader.reader.Footer
 import io.github.secnewt.reader.reader.ReaderController
 import io.github.secnewt.reader.reader.ReaderPrefs
 import io.github.secnewt.reader.reader.ReaderState
+import io.github.secnewt.reader.speech.ListenState
+import io.github.secnewt.reader.speech.Playback
+import io.github.secnewt.reader.speech.ReadAloud
 import io.github.secnewt.ui.NewtFonts
 import io.github.secnewt.ui.NewtTheme
 import io.github.secnewt.ui.neonOutline
@@ -58,8 +83,9 @@ import kotlinx.coroutines.flow.filter
 
 /** Connects the overlay to the controller and the saved text size. */
 @Composable
-fun ReaderRoute(controller: ReaderController, prefs: ReaderPrefs) {
+fun ReaderRoute(controller: ReaderController, prefs: ReaderPrefs, readAloud: ReadAloud) {
     val state by controller.state.collectAsState()
+    val listen by readAloud.state.collectAsState()
     var scale by remember { mutableFloatStateOf(prefs.textScale) }
     NewtTheme {
         ReaderScreen(
@@ -68,12 +94,26 @@ fun ReaderRoute(controller: ReaderController, prefs: ReaderPrefs) {
             onTextScale = { scale = it; prefs.textScale = it },
             onTap = controller::tap,
             onClose = controller::close,
-            onNearEnd = controller::nearEnd,
+            onNearEnd = { controller.nearEnd() },
             onLoadMore = controller::loadMore,
             onJumpDone = controller::jumpDone,
+            listen = listen,
+            listenActions = remember(readAloud) {
+                ListenActions(readAloud::start, readAloud::pause, readAloud::resume, readAloud::next, readAloud::back, readAloud::stop)
+            },
         )
     }
 }
+
+/** What the read-aloud buttons do. [start] gets the first block on screen. */
+class ListenActions(
+    val start: (Int) -> Unit = {},
+    val pause: () -> Unit = {},
+    val resume: () -> Unit = {},
+    val next: () -> Unit = {},
+    val back: () -> Unit = {},
+    val stop: () -> Unit = {},
+)
 
 @Composable
 fun ReaderScreen(
@@ -85,6 +125,8 @@ fun ReaderScreen(
     onNearEnd: () -> Unit,
     onLoadMore: () -> Unit,
     onJumpDone: () -> Unit,
+    listen: ListenState = ListenState(),
+    listenActions: ListenActions = ListenActions(),
 ) {
     val list = rememberLazyListState()
     val nearEnd by rememberUpdatedState(onNearEnd)
@@ -100,6 +142,21 @@ fun ReaderScreen(
             info.totalItemsCount > 0 && (info.visibleItemsInfo.lastOrNull()?.index ?: 0) >= info.totalItemsCount - 3
         }.distinctUntilChanged().filter { it }.collect { nearEnd() }
     }
+    // Keep the block being read on screen.
+    LaunchedEffect(listen.current) {
+        val current = listen.current ?: return@LaunchedEffect
+        val info = list.layoutInfo
+        val item = info.visibleItemsInfo.firstOrNull { it.index == current }
+        val whole = item != null && item.offset >= info.viewportStartOffset && item.offset + item.size <= info.viewportEndOffset
+        if (!whole) list.animateScrollToItem(current)
+    }
+    // The screen stays on while reading aloud.
+    val view = LocalView.current
+    val reading = listen.playback != Playback.IDLE
+    DisposableEffect(view, reading) {
+        view.keepScreenOn = reading
+        onDispose { view.keepScreenOn = false }
+    }
 
     Surface(color = MaterialTheme.colorScheme.background, modifier = Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
@@ -107,7 +164,7 @@ fun ReaderScreen(
             if (state.busy) {
                 LinearProgressIndicator(Modifier.fillMaxWidth().semantics { contentDescription = "Loading" })
             }
-            state.message?.let {
+            (state.message ?: listen.message)?.let {
                 Text(
                     it,
                     style = MaterialTheme.typography.bodyLarge,
@@ -118,18 +175,33 @@ fun ReaderScreen(
             val keys = remember(state.blocks) { itemKeys(state.blocks) }
             val density = LocalDensity.current
             // Reader's own text size, on top of the phone's; the top bar above stays normal size.
-            CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * textScale)) {
-                LazyColumn(
-                    state = list,
-                    modifier = Modifier.fillMaxSize().pinchToScale({ currentScale }, onTextScale),
-                    contentPadding = PaddingValues(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    // Keys keep the reader's place when a load puts text above it (see Merge.placeNew).
-                    items(state.blocks.size, key = { keys[it] }) { i -> BlockView(state.blocks[i], onTap) }
-                    item { FooterView(state.footer, onLoadMore) }
+            val playerOpen = listen.playback == Playback.PLAYING || listen.playback == Playback.PAUSED
+            Box(Modifier.weight(1f).fillMaxWidth()) {
+                CompositionLocalProvider(LocalDensity provides Density(density.density, density.fontScale * textScale)) {
+                    LazyColumn(
+                        state = list,
+                        modifier = Modifier.fillMaxSize().pinchToScale({ currentScale }, onTextScale),
+                        // Room at the bottom so the Listen button never hides the last lines.
+                        contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 20.dp, bottom = if (playerOpen) 20.dp else 96.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        // Keys keep the reader's place when a load puts text above it (see Merge.placeNew).
+                        items(state.blocks.size, key = { keys[it] }) { i ->
+                            val beingRead = i == listen.current
+                            Box(if (beingRead) Modifier.beingRead() else Modifier) { BlockView(state.blocks[i], onTap) }
+                        }
+                        item { FooterView(state.footer, onLoadMore) }
+                    }
+                }
+                if (!playerOpen && state.blocks.isNotEmpty()) {
+                    ListenButton(
+                        starting = listen.playback == Playback.STARTING,
+                        onClick = { listenActions.start(list.firstVisibleItemIndex) },
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
+                    )
                 }
             }
+            if (playerOpen) PlayerBar(listen.playback == Playback.PAUSED, listenActions)
         }
     }
 }
@@ -170,6 +242,79 @@ private fun BarButton(label: String, description: String?, onClick: () -> Unit) 
     val talk = if (description != null) Modifier.semantics { contentDescription = description } else Modifier
     OutlinedButton(onClick = onClick, border = neonOutline(), modifier = Modifier.heightIn(min = 56.dp).then(talk)) {
         Text(label, style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+/** The block being read: a thick gradient outline drawn just outside it, so the text doesn't move. */
+@Composable
+private fun Modifier.beingRead(): Modifier {
+    val brush = Brush.linearGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.secondary))
+    return semantics { stateDescription = "Being read aloud" }.drawWithContent {
+        drawContent()
+        val out = 8.dp.toPx()
+        drawRoundRect(
+            brush,
+            topLeft = Offset(-out, -out),
+            size = Size(size.width + 2 * out, size.height + 2 * out),
+            cornerRadius = CornerRadius(12.dp.toPx()),
+            style = Stroke(3.dp.toPx()),
+        )
+    }
+}
+
+@Composable
+private fun ListenButton(starting: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    OutlinedButton(
+        onClick = onClick,
+        enabled = !starting,
+        border = neonOutline(),
+        // Filled, so text scrolling underneath doesn't show through.
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.background),
+        modifier = modifier.heightIn(min = 56.dp),
+    ) {
+        Icon(Icons.AutoMirrored.Filled.VolumeUp, contentDescription = null, modifier = Modifier.size(28.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(if (starting) "Starting…" else "Listen", style = MaterialTheme.typography.titleMedium)
+    }
+}
+
+/** Back, Pause or Resume, Next, Stop. Two rows when the phone's text is large. */
+@Composable
+private fun PlayerBar(paused: Boolean, actions: ListenActions) {
+    val back = @Composable { m: Modifier -> PlayerButton(Icons.Filled.SkipPrevious, "Back", "Back: read the block before", m, actions.back) }
+    val toggle = @Composable { m: Modifier ->
+        if (paused) PlayerButton(Icons.Filled.PlayArrow, "Resume", null, m, actions.resume)
+        else PlayerButton(Icons.Filled.Pause, "Pause", null, m, actions.pause)
+    }
+    val next = @Composable { m: Modifier -> PlayerButton(Icons.Filled.SkipNext, "Next", "Next: skip to the next block", m, actions.next) }
+    val stop = @Composable { m: Modifier -> PlayerButton(Icons.Filled.Stop, "Stop", "Stop: stop reading aloud", m, actions.stop) }
+    val padding = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)
+    val gap = Arrangement.spacedBy(8.dp)
+    if (LocalDensity.current.fontScale >= 1.5f) {
+        Column(padding, verticalArrangement = gap) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = gap) { back(Modifier.weight(1f)); toggle(Modifier.weight(1f)) }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = gap) { next(Modifier.weight(1f)); stop(Modifier.weight(1f)) }
+        }
+    } else {
+        Row(padding, horizontalArrangement = gap) {
+            back(Modifier.weight(1f)); toggle(Modifier.weight(1f)); next(Modifier.weight(1f)); stop(Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun PlayerButton(icon: ImageVector, label: String, description: String?, modifier: Modifier, onClick: () -> Unit) {
+    val talk = if (description != null) Modifier.semantics { contentDescription = description } else Modifier
+    OutlinedButton(
+        onClick = onClick,
+        border = neonOutline(),
+        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+        modifier = modifier.heightIn(min = 64.dp).then(talk),
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(icon, contentDescription = null, modifier = Modifier.size(28.dp))
+            Text(label, style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        }
     }
 }
 

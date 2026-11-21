@@ -2,6 +2,8 @@ package io.github.secnewt.reader.ui
 
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -30,5 +32,12 @@ class SettingsScreenTest {
 
     @Test fun largeText() = composeRule.newtScreenshot("settings-200pct", dark = true, fontScale = 2f) {
         SettingsScreen(false, 2.0f, {}, false, {}, {})
+    }
+
+    @Test fun speechSettingsButtonOpensThem() {
+        var opened = false
+        composeRule.setContent { io.github.secnewt.ui.NewtTheme(darkTheme = true) { SettingsScreen(true, 1.5f, {}, false, {}, {}, { opened = true }) } }
+        composeRule.onNodeWithText("Speech settings").performScrollTo().performClick()
+        org.junit.Assert.assertTrue(opened)
     }
 }

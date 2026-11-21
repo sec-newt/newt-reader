@@ -32,7 +32,7 @@ import io.github.secnewt.ui.SectionHeading
 import io.github.secnewt.ui.neonOutline
 import kotlin.math.roundToInt
 
-/** The launcher screen: whether Reader is on, how to turn it on, and its two settings. */
+/** The launcher screen: whether Reader is on, how to turn it on, its two settings, and where read-aloud's voice is chosen. */
 @Composable
 fun SettingsScreen(
     serviceOn: Boolean,
@@ -41,6 +41,7 @@ fun SettingsScreen(
     floatingButton: Boolean,
     onFloatingButton: (Boolean) -> Unit,
     onOpenAccessibilitySettings: () -> Unit,
+    onOpenSpeechSettings: () -> Unit = {},
 ) {
     Scaffold { padding ->
         Column(
@@ -107,6 +108,15 @@ fun SettingsScreen(
                     modifier = Modifier.weight(1f),
                 )
                 Switch(checked = floatingButton, onCheckedChange = null)
+            }
+
+            SectionHeading("Read aloud")
+            Text(
+                "Tap Listen in Reader to hear the page. The voice and speed come from your phone's text-to-speech settings.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            OutlinedButton(onClick = onOpenSpeechSettings, border = neonOutline(), modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
+                Text("Speech settings", style = MaterialTheme.typography.titleMedium)
             }
         }
     }

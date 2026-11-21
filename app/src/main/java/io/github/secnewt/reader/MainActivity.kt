@@ -1,6 +1,7 @@
 package io.github.secnewt.reader
 
 import android.accessibilityservice.AccessibilityServiceInfo
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Bundle
 import android.provider.Settings
@@ -35,8 +36,18 @@ class MainActivity : ComponentActivity() {
                     floatingButton = bubble,
                     onFloatingButton = { bubble = it; prefs.floatingButton = it },
                     onOpenAccessibilitySettings = { startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) },
+                    onOpenSpeechSettings = ::openSpeechSettings,
                 )
             }
+        }
+    }
+
+    /** The phone's text-to-speech settings (engine, voice, speed); falls back to Accessibility settings if a phone hides them. */
+    private fun openSpeechSettings() {
+        try {
+            startActivity(Intent(TTS_SETTINGS))
+        } catch (_: ActivityNotFoundException) {
+            startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
     }
 
@@ -45,5 +56,10 @@ class MainActivity : ComponentActivity() {
         serviceOn = getSystemService(AccessibilityManager::class.java)
             .getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
             .any { it.resolveInfo.serviceInfo.packageName == packageName }
+    }
+
+    private companion object {
+        /** Not in the public SDK as a constant, but every Android since 4.0 has it. */
+        const val TTS_SETTINGS = "com.android.settings.TTS_SETTINGS"
     }
 }
